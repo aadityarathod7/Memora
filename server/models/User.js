@@ -18,6 +18,43 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Please add a password'],
     minlength: 6
+  },
+  // User preferences
+  settings: {
+    theme: {
+      type: String,
+      enum: ['forest', 'ocean', 'sunset', 'lavender', 'midnight'],
+      default: 'forest'
+    },
+    darkMode: {
+      type: Boolean,
+      default: false
+    },
+    font: {
+      type: String,
+      enum: ['default', 'handwritten', 'classic', 'modern'],
+      default: 'default'
+    }
+  },
+  // Streak tracking
+  streak: {
+    current: {
+      type: Number,
+      default: 0
+    },
+    longest: {
+      type: Number,
+      default: 0
+    },
+    lastEntryDate: {
+      type: Date,
+      default: null
+    }
+  },
+  // Custom tags the user has created
+  customTags: {
+    type: [String],
+    default: ['personal', 'work', 'family', 'health', 'goals', 'gratitude', 'dreams']
   }
 }, {
   timestamps: true

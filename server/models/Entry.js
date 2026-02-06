@@ -41,13 +41,41 @@ const entrySchema = new mongoose.Schema({
     type: String,
     default: ''
   },
-  // New: conversation thread for back-and-forth
+  // Conversation thread for back-and-forth
   conversation: {
     type: [messageSchema],
     default: []
+  },
+  // Custom tags
+  tags: {
+    type: [String],
+    default: []
+  },
+  // Favorite/Bookmark
+  isFavorite: {
+    type: Boolean,
+    default: false
+  },
+  // Image attachments (URLs or base64)
+  images: {
+    type: [String],
+    default: []
+  },
+  // Word count for stats
+  wordCount: {
+    type: Number,
+    default: 0
   }
 }, {
   timestamps: true
+});
+
+// Pre-save middleware to calculate word count
+entrySchema.pre('save', function(next) {
+  if (this.content) {
+    this.wordCount = this.content.trim().split(/\s+/).filter(word => word.length > 0).length;
+  }
+  next();
 });
 
 const Entry = mongoose.model('Entry', entrySchema);

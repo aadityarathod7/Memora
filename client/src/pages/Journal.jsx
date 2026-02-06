@@ -1,7 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getEntries, createEntry, deleteEntry, replyToEntry } from '../services/api';
+import { useTheme } from '../context/ThemeContext';
+import {
+  getEntries,
+  createEntry,
+  deleteEntry,
+  replyToEntry,
+  toggleFavorite as toggleFavoriteApi,
+  updateEntryTags,
+  updateEntry,
+  getCustomTags
+} from '../services/api';
 import {
   BookOpen,
   PenLine,
@@ -28,8 +38,24 @@ import {
   Calendar,
   Filter,
   X,
-  ChevronDown
+  ChevronDown,
+  Search,
+  Settings,
+  TrendingUp,
+  Lightbulb,
+  Tag,
+  Edit3,
+  Check,
+  Download
 } from 'lucide-react';
+
+// Import feature panels
+import StatsPanel from '../components/StatsPanel';
+import SettingsPanel from '../components/SettingsPanel';
+import SearchPanel from '../components/SearchPanel';
+import OnThisDayPanel from '../components/OnThisDayPanel';
+import PromptsPanel from '../components/PromptsPanel';
+import WeeklySummaryPanel from '../components/WeeklySummaryPanel';
 
 // Month names for filter
 const monthNames = [
@@ -53,6 +79,7 @@ const moodConfig = {
 
 const Journal = () => {
   const { user, logout } = useAuth();
+  const { loadUserSettings } = useTheme();
   const navigate = useNavigate();
   const replyInputRef = useRef(null);
 
@@ -66,6 +93,7 @@ const Journal = () => {
   // Journal form state
   const [journalContent, setJournalContent] = useState('');
   const [feeling, setFeeling] = useState('');
+  const [entryTags, setEntryTags] = useState([]);
 
   // Reply state
   const [replyMessage, setReplyMessage] = useState('');
@@ -74,10 +102,23 @@ const Journal = () => {
   const [filterYear, setFilterYear] = useState('');
   const [filterMonth, setFilterMonth] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
 
   // Page turn animation state
   const [isPageTurning, setIsPageTurning] = useState(false);
   const [pageAnimation, setPageAnimation] = useState('');
+
+  // Panel states
+  const [activePanel, setActivePanel] = useState(null); // 'stats', 'settings', 'search', 'onthisday', 'prompts', 'summary'
+
+  // Edit mode state
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState('');
+  const [editMood, setEditMood] = useState('');
+
+  // Tags state
+  const [customTags, setCustomTags] = useState([]);
+  const [showTagPicker, setShowTagPicker] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -85,6 +126,8 @@ const Journal = () => {
       return;
     }
     fetchEntries();
+    fetchCustomTags();
+    loadUserSettings(); // Load theme settings from server
   }, [user, navigate]);
 
   const fetchEntries = async () => {
@@ -95,6 +138,15 @@ const Journal = () => {
       console.error('Failed to load entries');
     } finally {
       setFetchingEntries(false);
+    }
+  };
+
+  const fetchCustomTags = async () => {
+    try {
+      const res = await getCustomTags();
+      setCustomTags(res.data.customTags || []);
+    } catch (err) {
+      console.error('Failed to load tags');
     }
   };
 
@@ -115,7 +167,8 @@ const Journal = () => {
       const response = await createEntry({
         title,
         content: journalContent,
-        mood: feeling || 'neutral'
+        mood: feeling || 'neutral',
+        tags: entryTags
       });
 
       const newEntry = response.data;
@@ -123,6 +176,7 @@ const Journal = () => {
       setSelectedEntry(newEntry);
       setJournalContent('');
       setFeeling('');
+      setEntryTags([]);
       setShowWriting(false);
     } catch (err) {
       console.error('Failed to save entry');
@@ -168,6 +222,67 @@ const Journal = () => {
     } catch (err) {
       console.error('Failed to delete entry');
     }
+  };
+
+  const handleToggleFavorite = async () => {
+    if (!selectedEntry) return;
+
+    try {
+      const res = await toggleFavoriteApi(selectedEntry._id);
+      const updatedEntry = { ...selectedEntry, isFavorite: res.data.isFavorite };
+      setSelectedEntry(updatedEntry);
+      setEntries(entries.map(e =>
+        e._id === selectedEntry._id ? updatedEntry : e
+      ));
+    } catch (err) {
+      console.error('Failed to toggle favorite');
+    }
+  };
+
+  const handleUpdateTags = async (tags) => {
+    if (!selectedEntry) return;
+
+    try {
+      const res = await updateEntryTags(selectedEntry._id, tags);
+      const updatedEntry = { ...selectedEntry, tags: res.data.tags };
+      setSelectedEntry(updatedEntry);
+      setEntries(entries.map(e =>
+        e._id === selectedEntry._id ? updatedEntry : e
+      ));
+    } catch (err) {
+      console.error('Failed to update tags');
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedEntry || !editContent.trim()) return;
+
+    try {
+      const res = await updateEntry(selectedEntry._id, {
+        content: editContent,
+        mood: editMood
+      });
+      const updatedEntry = { ...selectedEntry, content: editContent, mood: editMood };
+      setSelectedEntry(updatedEntry);
+      setEntries(entries.map(e =>
+        e._id === selectedEntry._id ? updatedEntry : e
+      ));
+      setIsEditing(false);
+    } catch (err) {
+      console.error('Failed to save edit');
+    }
+  };
+
+  const startEditing = () => {
+    setEditContent(selectedEntry.content);
+    setEditMood(selectedEntry.mood);
+    setIsEditing(true);
+  };
+
+  const cancelEditing = () => {
+    setIsEditing(false);
+    setEditContent('');
+    setEditMood('');
   };
 
   const formatDate = (dateString) => {
@@ -225,6 +340,10 @@ const Journal = () => {
     return entries.filter(entry => {
       const entryDate = new Date(entry.createdAt);
 
+      if (showFavoritesOnly && !entry.isFavorite) {
+        return false;
+      }
+
       if (filterYear && entryDate.getFullYear() !== parseInt(filterYear)) {
         return false;
       }
@@ -241,10 +360,11 @@ const Journal = () => {
   const clearFilters = () => {
     setFilterYear('');
     setFilterMonth('');
+    setShowFavoritesOnly(false);
   };
 
   const filteredEntries = getFilteredEntries();
-  const hasActiveFilters = filterYear || filterMonth !== '';
+  const hasActiveFilters = filterYear || filterMonth !== '' || showFavoritesOnly;
 
   // Handle page turn animation - 3D flip out then flip in with new content
   const handlePageTurn = (callback) => {
@@ -272,6 +392,8 @@ const Journal = () => {
   // Wrapper for selecting entry with animation
   const handleSelectEntry = (entry) => {
     if (selectedEntry?._id === entry._id) return;
+    setActivePanel(null);
+    setIsEditing(false);
 
     handlePageTurn(() => {
       setSelectedEntry(entry);
@@ -280,10 +402,14 @@ const Journal = () => {
   };
 
   // Wrapper for showing write form with animation
-  const handleShowWriting = () => {
+  const handleShowWriting = (prompt = '') => {
+    setActivePanel(null);
     handlePageTurn(() => {
       setShowWriting(true);
       setSelectedEntry(null);
+      if (prompt) {
+        setJournalContent(`${prompt}\n\n`);
+      }
     });
   };
 
@@ -291,7 +417,35 @@ const Journal = () => {
   const handleCancelWriting = () => {
     handlePageTurn(() => {
       setShowWriting(false);
+      setJournalContent('');
+      setFeeling('');
+      setEntryTags([]);
     });
+  };
+
+  // Open panel with animation
+  const openPanel = (panel) => {
+    setActivePanel(null);
+    setIsEditing(false);
+    handlePageTurn(() => {
+      setActivePanel(panel);
+      setShowWriting(false);
+      setSelectedEntry(null);
+    });
+  };
+
+  const closePanel = () => {
+    handlePageTurn(() => {
+      setActivePanel(null);
+    });
+  };
+
+  // Handle prompt selection
+  const handleSelectPrompt = (prompt) => {
+    closePanel();
+    setTimeout(() => {
+      handleShowWriting(prompt);
+    }, 500);
   };
 
   if (fetchingEntries) {
@@ -327,9 +481,43 @@ const Journal = () => {
               </div>
             </Link>
 
-            {/* User section */}
-            <div className="flex items-center gap-4">
-              <div className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full shadow-sm" style={{ background: 'var(--bg-paper)', border: '1px solid var(--border-light)' }}>
+            {/* Feature buttons */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => openPanel('search')}
+                className="p-2 rounded-lg transition-all hover:shadow-md"
+                style={{ color: 'var(--text-secondary)', background: 'var(--bg-paper)' }}
+                title="Search"
+              >
+                <Search size={18} />
+              </button>
+              <button
+                onClick={() => openPanel('stats')}
+                className="p-2 rounded-lg transition-all hover:shadow-md"
+                style={{ color: 'var(--text-secondary)', background: 'var(--bg-paper)' }}
+                title="Stats"
+              >
+                <TrendingUp size={18} />
+              </button>
+              <button
+                onClick={() => openPanel('prompts')}
+                className="p-2 rounded-lg transition-all hover:shadow-md hidden sm:block"
+                style={{ color: 'var(--text-secondary)', background: 'var(--bg-paper)' }}
+                title="Writing Prompts"
+              >
+                <Lightbulb size={18} />
+              </button>
+              <button
+                onClick={() => openPanel('settings')}
+                className="p-2 rounded-lg transition-all hover:shadow-md"
+                style={{ color: 'var(--text-secondary)', background: 'var(--bg-paper)' }}
+                title="Settings"
+              >
+                <Settings size={18} />
+              </button>
+
+              {/* User section */}
+              <div className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full shadow-sm ml-2" style={{ background: 'var(--bg-paper)', border: '1px solid var(--border-light)' }}>
                 <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-sm font-medium shadow-inner" style={{ background: 'linear-gradient(135deg, var(--app-accent) 0%, var(--app-accent-dark) 100%)' }}>
                   {user?.name?.charAt(0).toUpperCase()}
                 </div>
@@ -374,12 +562,44 @@ const Journal = () => {
                   <h2 className="font-serif text-lg font-semibold tracking-wide" style={{ color: 'var(--text-primary)' }}>My Entries</h2>
                 </div>
                 <button
-                  onClick={handleShowWriting}
+                  onClick={() => handleShowWriting()}
                   disabled={isPageTurning}
                   className="btn-accent text-white px-4 py-2 rounded-lg text-sm shadow-md flex items-center gap-2 disabled:opacity-70"
                 >
                   <Plus size={16} />
                   New Entry
+                </button>
+              </div>
+
+              {/* Quick Actions */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                <button
+                  onClick={() => openPanel('onthisday')}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-serif transition-all"
+                  style={{ background: 'var(--bg-paper)', border: '1px solid var(--border-light)', color: 'var(--text-secondary)' }}
+                >
+                  <Calendar size={14} />
+                  On This Day
+                </button>
+                <button
+                  onClick={() => openPanel('summary')}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-serif transition-all"
+                  style={{ background: 'var(--bg-paper)', border: '1px solid var(--border-light)', color: 'var(--text-secondary)' }}
+                >
+                  <TrendingUp size={14} />
+                  Weekly
+                </button>
+                <button
+                  onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-serif transition-all"
+                  style={{
+                    background: showFavoritesOnly ? 'var(--gold-accent)' : 'var(--bg-paper)',
+                    border: '1px solid var(--border-light)',
+                    color: showFavoritesOnly ? 'white' : 'var(--text-secondary)'
+                  }}
+                >
+                  <Star size={14} fill={showFavoritesOnly ? 'white' : 'none'} />
+                  Favorites
                 </button>
               </div>
 
@@ -396,10 +616,10 @@ const Journal = () => {
                     }}
                   >
                     <div className="flex items-center gap-2">
-                      <Calendar size={16} />
+                      <Filter size={16} />
                       <span>
                         {hasActiveFilters
-                          ? `${filterMonth !== '' ? monthNames[parseInt(filterMonth)] + ' ' : ''}${filterYear}`
+                          ? `${showFavoritesOnly ? 'Favorites ' : ''}${filterMonth !== '' ? monthNames[parseInt(filterMonth)] + ' ' : ''}${filterYear}`
                           : 'Filter by date'}
                       </span>
                     </div>
@@ -529,11 +749,12 @@ const Journal = () => {
                       }}
                     >
                       {/* Page number style */}
-                      <span className="absolute top-2 right-3 font-serif text-xs italic" style={{ color: 'var(--text-muted)' }}>
+                      <span className="absolute top-2 right-3 font-serif text-xs italic flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
+                        {entry.isFavorite && <Star size={12} fill="var(--gold-accent)" style={{ color: 'var(--gold-accent)' }} />}
                         pg. {filteredEntries.length - index}
                       </span>
 
-                      <div className="flex items-center gap-2 mb-2 pr-8">
+                      <div className="flex items-center gap-2 mb-2 pr-12">
                         {getMoodIcon(entry.mood)}
                         <p className="font-serif font-medium flex-1 truncate" style={{ color: 'var(--text-primary)' }}>{entry.title}</p>
                       </div>
@@ -543,6 +764,12 @@ const Journal = () => {
                           <Clock size={12} />
                           {formatTime(entry.createdAt)}
                         </div>
+                        {entry.tags?.length > 0 && (
+                          <div className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                            <Tag size={12} />
+                            {entry.tags.length}
+                          </div>
+                        )}
                         {entry.conversation && entry.conversation.length > 0 && (
                           <div className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--app-accent-light)', color: 'var(--app-accent-dark)' }}>
                             <MessageCircle size={12} />
@@ -559,7 +786,15 @@ const Journal = () => {
             {/* Right page - Main content */}
             <div className="lg:col-span-2 rounded-r-lg lg:border-l relative page-corner page-3d" style={{ background: 'var(--bg-paper)', borderColor: 'var(--border-light)' }}>
               <div className={`p-8 relative z-10 ${pageAnimation}`} style={{ transformStyle: 'preserve-3d' }}>
-                {showWriting ? (
+                {/* Feature Panels */}
+                {activePanel === 'stats' && <StatsPanel onClose={closePanel} />}
+                {activePanel === 'settings' && <SettingsPanel onClose={closePanel} />}
+                {activePanel === 'search' && <SearchPanel onClose={closePanel} onSelectEntry={handleSelectEntry} />}
+                {activePanel === 'onthisday' && <OnThisDayPanel onClose={closePanel} onSelectEntry={handleSelectEntry} />}
+                {activePanel === 'prompts' && <PromptsPanel onClose={closePanel} onSelectPrompt={handleSelectPrompt} />}
+                {activePanel === 'summary' && <WeeklySummaryPanel onClose={closePanel} onSelectEntry={handleSelectEntry} />}
+
+                {!activePanel && showWriting ? (
                   /* Writing new entry */
                   <div className="animate-fade-in-up">
                     <form onSubmit={handleSaveEntry}>
@@ -620,6 +855,37 @@ const Journal = () => {
                         </div>
                       </div>
 
+                      {/* Tags Section */}
+                      <div className="mb-6">
+                        <p className="text-sm font-serif font-medium mb-3 flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
+                          <Tag size={14} />
+                          Add tags (optional)
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {customTags.map((tag) => (
+                            <button
+                              key={tag}
+                              type="button"
+                              onClick={() => {
+                                if (entryTags.includes(tag)) {
+                                  setEntryTags(entryTags.filter(t => t !== tag));
+                                } else {
+                                  setEntryTags([...entryTags, tag]);
+                                }
+                              }}
+                              className="px-3 py-1 rounded-full text-sm transition-all"
+                              style={{
+                                background: entryTags.includes(tag) ? 'var(--app-accent)' : 'var(--bg-parchment)',
+                                color: entryTags.includes(tag) ? 'white' : 'var(--text-secondary)',
+                                border: '1px solid var(--border-light)'
+                              }}
+                            >
+                              {tag}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
                       <div className="chapter-divider">
                         <Star size={10} style={{ color: 'var(--gold-accent)' }} />
                       </div>
@@ -654,7 +920,7 @@ const Journal = () => {
                       </div>
                     </form>
                   </div>
-                ) : selectedEntry ? (
+                ) : !activePanel && selectedEntry ? (
                   /* Viewing an entry with conversation */
                   <div className="space-y-6 animate-fade-in-up">
                     {/* Your journal entry */}
@@ -671,34 +937,168 @@ const Journal = () => {
                             {formatDate(selectedEntry.createdAt)}
                           </div>
                         </div>
-                        <button
-                          onClick={() => {
-                            if (confirm('Delete this entry?')) {
-                              handleDeleteEntry(selectedEntry._id);
-                            }
-                          }}
-                          className="p-2 rounded-lg transition-colors hover:bg-red-50 hover:text-red-500 absolute right-0 top-0"
-                          style={{ color: 'var(--text-muted)' }}
-                        >
-                          <Trash2 size={18} />
-                        </button>
+
+                        {/* Action buttons */}
+                        <div className="flex items-center gap-1 absolute right-0 top-0">
+                          <button
+                            onClick={handleToggleFavorite}
+                            className="p-2 rounded-lg transition-colors hover:bg-yellow-50"
+                            style={{ color: selectedEntry.isFavorite ? 'var(--gold-accent)' : 'var(--text-muted)' }}
+                            title={selectedEntry.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                          >
+                            <Star size={18} fill={selectedEntry.isFavorite ? 'var(--gold-accent)' : 'none'} />
+                          </button>
+                          <button
+                            onClick={startEditing}
+                            className="p-2 rounded-lg transition-colors hover:bg-blue-50"
+                            style={{ color: 'var(--text-muted)' }}
+                            title="Edit entry"
+                          >
+                            <Edit3 size={18} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (confirm('Delete this entry?')) {
+                                handleDeleteEntry(selectedEntry._id);
+                              }
+                            }}
+                            className="p-2 rounded-lg transition-colors hover:bg-red-50 hover:text-red-500"
+                            style={{ color: 'var(--text-muted)' }}
+                            title="Delete entry"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
                       </div>
 
-                      {/* Entry content with drop cap effect */}
-                      <div className="drop-cap text-lg leading-relaxed whitespace-pre-wrap handwritten ink-text" style={{ fontSize: '1.35rem' }}>
-                        {selectedEntry.content}
-                      </div>
+                      {/* Tags display */}
+                      {selectedEntry.tags?.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-4">
+                          {selectedEntry.tags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="px-2 py-0.5 rounded-full text-xs"
+                              style={{ background: 'var(--app-accent-light)', color: 'var(--app-accent-dark)' }}
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Edit mode or display */}
+                      {isEditing ? (
+                        <div className="space-y-4">
+                          <textarea
+                            value={editContent}
+                            onChange={(e) => setEditContent(e.target.value)}
+                            rows={10}
+                            className="w-full bg-transparent border-none outline-none resize-none lined-paper handwritten"
+                            style={{ color: 'var(--text-ink)', background: 'var(--bg-parchment)', padding: '1rem', borderRadius: '0.5rem' }}
+                          />
+                          <div className="flex flex-wrap gap-2 mb-4">
+                            {Object.entries(moodConfig).slice(0, 8).map(([key, config]) => {
+                              const IconComponent = config.icon;
+                              return (
+                                <button
+                                  key={key}
+                                  type="button"
+                                  onClick={() => setEditMood(key)}
+                                  className="px-3 py-1.5 rounded-lg text-sm transition-all flex items-center gap-1"
+                                  style={{
+                                    background: editMood === key ? 'var(--app-accent)' : 'var(--bg-parchment)',
+                                    color: editMood === key ? 'white' : 'var(--text-secondary)',
+                                    border: '1px solid var(--border-light)'
+                                  }}
+                                >
+                                  <IconComponent size={14} />
+                                  {config.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={handleSaveEdit}
+                              className="px-4 py-2 rounded-lg flex items-center gap-2"
+                              style={{ background: 'var(--app-accent)', color: 'white' }}
+                            >
+                              <Check size={16} />
+                              Save Changes
+                            </button>
+                            <button
+                              onClick={cancelEditing}
+                              className="px-4 py-2 rounded-lg"
+                              style={{ color: 'var(--text-muted)', background: 'var(--bg-parchment)' }}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        /* Entry content with drop cap effect */
+                        <div className="drop-cap text-lg leading-relaxed whitespace-pre-wrap handwritten ink-text" style={{ fontSize: '1.35rem' }}>
+                          {selectedEntry.content}
+                        </div>
+                      )}
+
+                      {/* Tag picker */}
+                      {!isEditing && (
+                        <div className="mt-4">
+                          <button
+                            onClick={() => setShowTagPicker(!showTagPicker)}
+                            className="flex items-center gap-1 text-xs font-serif px-3 py-1.5 rounded-lg transition-all"
+                            style={{ background: 'var(--bg-parchment)', color: 'var(--text-muted)', border: '1px solid var(--border-light)' }}
+                          >
+                            <Tag size={12} />
+                            {selectedEntry.tags?.length > 0 ? 'Edit tags' : 'Add tags'}
+                          </button>
+                          {showTagPicker && (
+                            <div className="mt-2 p-3 rounded-lg animate-fade-in-up" style={{ background: 'var(--bg-parchment)', border: '1px solid var(--border-light)' }}>
+                              <div className="flex flex-wrap gap-2">
+                                {customTags.map((tag) => (
+                                  <button
+                                    key={tag}
+                                    onClick={() => {
+                                      const currentTags = selectedEntry.tags || [];
+                                      const newTags = currentTags.includes(tag)
+                                        ? currentTags.filter(t => t !== tag)
+                                        : [...currentTags, tag];
+                                      handleUpdateTags(newTags);
+                                    }}
+                                    className="px-2 py-1 rounded-full text-xs transition-all"
+                                    style={{
+                                      background: selectedEntry.tags?.includes(tag) ? 'var(--app-accent)' : 'var(--bg-paper)',
+                                      color: selectedEntry.tags?.includes(tag) ? 'white' : 'var(--text-secondary)',
+                                      border: '1px solid var(--border-light)'
+                                    }}
+                                  >
+                                    {tag}
+                                  </button>
+                                ))}
+                              </div>
+                              <button
+                                onClick={() => setShowTagPicker(false)}
+                                className="mt-2 text-xs"
+                                style={{ color: 'var(--text-muted)' }}
+                              >
+                                Done
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {/* Decorative divider before AI response */}
-                    {selectedEntry.aiResponse && (
+                    {selectedEntry.aiResponse && !isEditing && (
                       <div className="chapter-divider my-8">
                         <BookOpen size={16} style={{ color: 'var(--gold-accent)' }} />
                       </div>
                     )}
 
                     {/* Initial AI response - styled like a letter response */}
-                    {selectedEntry.aiResponse && (
+                    {selectedEntry.aiResponse && !isEditing && (
                       <div className="animate-write-in">
                         <div className="flex items-center gap-2 mb-3">
                           <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, var(--app-accent) 0%, var(--app-accent-dark) 100%)' }}>
@@ -719,7 +1119,7 @@ const Journal = () => {
                     )}
 
                     {/* Conversation thread */}
-                    {selectedEntry.conversation && selectedEntry.conversation.map((msg, index) => (
+                    {!isEditing && selectedEntry.conversation && selectedEntry.conversation.map((msg, index) => (
                       <div key={index} className={`${msg.role === 'user' ? 'pl-10' : ''}`}>
                         {msg.role === 'assistant' ? (
                           <div className="animate-write-in">
@@ -762,43 +1162,45 @@ const Journal = () => {
                     ))}
 
                     {/* Reply input - styled like writing in the margin */}
-                    <div className="sticky bottom-4 mt-8">
-                      <div className="chapter-divider mb-4">
-                        <Feather size={12} style={{ color: 'var(--gold-accent)' }} />
-                      </div>
-                      <form onSubmit={handleReply} className="flex gap-3 items-end">
-                        <div className="flex-1 rounded-xl p-4 shadow-inner" style={{ background: 'var(--bg-parchment)', border: '1px solid var(--border-light)' }}>
-                          <textarea
-                            ref={replyInputRef}
-                            value={replyMessage}
-                            onChange={(e) => setReplyMessage(e.target.value)}
-                            placeholder="Write your thoughts..."
-                            rows={2}
-                            className="w-full bg-transparent border-none outline-none resize-none handwritten"
-                            style={{ color: 'var(--text-ink)' }}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' && !e.shiftKey) {
-                                e.preventDefault();
-                                handleReply(e);
-                              }
-                            }}
-                          />
+                    {!isEditing && (
+                      <div className="sticky bottom-4 mt-8">
+                        <div className="chapter-divider mb-4">
+                          <Feather size={12} style={{ color: 'var(--gold-accent)' }} />
                         </div>
-                        <button
-                          type="submit"
-                          disabled={replying || !replyMessage.trim()}
-                          className="btn-accent text-white p-4 rounded-xl shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {replying ? (
-                            <Loader2 size={20} className="animate-spin" />
-                          ) : (
-                            <Send size={20} />
-                          )}
-                        </button>
-                      </form>
-                    </div>
+                        <form onSubmit={handleReply} className="flex gap-3 items-end">
+                          <div className="flex-1 rounded-xl p-4 shadow-inner" style={{ background: 'var(--bg-parchment)', border: '1px solid var(--border-light)' }}>
+                            <textarea
+                              ref={replyInputRef}
+                              value={replyMessage}
+                              onChange={(e) => setReplyMessage(e.target.value)}
+                              placeholder="Write your thoughts..."
+                              rows={2}
+                              className="w-full bg-transparent border-none outline-none resize-none handwritten"
+                              style={{ color: 'var(--text-ink)' }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                  e.preventDefault();
+                                  handleReply(e);
+                                }
+                              }}
+                            />
+                          </div>
+                          <button
+                            type="submit"
+                            disabled={replying || !replyMessage.trim()}
+                            className="btn-accent text-white p-4 rounded-xl shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {replying ? (
+                              <Loader2 size={20} className="animate-spin" />
+                            ) : (
+                              <Send size={20} />
+                            )}
+                          </button>
+                        </form>
+                      </div>
+                    )}
                   </div>
-                ) : (
+                ) : !activePanel && (
                   /* Empty state - invitation to write */
                   <div className="text-center py-12 animate-fade-in-up">
                     <div className="chapter-divider mb-8">
@@ -816,13 +1218,33 @@ const Journal = () => {
                     </p>
 
                     <button
-                      onClick={handleShowWriting}
+                      onClick={() => handleShowWriting()}
                       disabled={isPageTurning}
                       className="btn-accent text-white px-8 py-4 rounded-xl font-medium shadow-lg flex items-center gap-3 mx-auto text-lg disabled:opacity-70"
                     >
                       <Feather size={22} />
                       Begin Writing
                     </button>
+
+                    {/* Quick action buttons */}
+                    <div className="flex flex-wrap justify-center gap-3 mt-8">
+                      <button
+                        onClick={() => openPanel('prompts')}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-serif transition-all"
+                        style={{ background: 'var(--bg-parchment)', color: 'var(--text-secondary)', border: '1px solid var(--border-light)' }}
+                      >
+                        <Lightbulb size={16} />
+                        Need inspiration?
+                      </button>
+                      <button
+                        onClick={() => openPanel('onthisday')}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-serif transition-all"
+                        style={{ background: 'var(--bg-parchment)', color: 'var(--text-secondary)', border: '1px solid var(--border-light)' }}
+                      >
+                        <Calendar size={16} />
+                        On This Day
+                      </button>
+                    </div>
 
                     <div className="chapter-divider mt-12">
                       <Star size={12} style={{ color: 'var(--gold-accent)' }} />
