@@ -1,5 +1,5 @@
 import Entry from '../models/Entry.js';
-import { generateAIResponse } from '../services/aiService.js';
+import { generateAIResponse, generateReplyResponse } from '../services/aiService.js';
 
 // @desc    Get all entries for user
 // @route   GET /api/entries
@@ -104,6 +104,53 @@ export const deleteEntry = async (req, res) => {
 
     await entry.deleteOne();
     res.json({ message: 'Entry removed' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Reply to AI in an entry conversation
+// @route   POST /api/entries/:id/reply
+export const replyToEntry = async (req, res) => {
+  try {
+    const { message } = req.body;
+    const entry = await Entry.findById(req.params.id);
+
+    if (!entry) {
+      return res.status(404).json({ message: 'Entry not found' });
+    }
+
+    if (entry.user.toString() !== req.user._id.toString()) {
+      return res.status(401).json({ message: 'Not authorized' });
+    }
+
+    // Add user message to conversation
+    entry.conversation.push({
+      role: 'user',
+      content: message
+    });
+
+    // Generate AI reply with conversation context
+    const aiReply = await generateReplyResponse(
+      entry.content,
+      entry.mood,
+      entry.aiResponse,
+      entry.conversation,
+      req.user.name
+    );
+
+    // Add AI response to conversation
+    entry.conversation.push({
+      role: 'assistant',
+      content: aiReply
+    });
+
+    await entry.save();
+
+    res.json({
+      message: aiReply,
+      conversation: entry.conversation
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

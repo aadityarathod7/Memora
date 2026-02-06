@@ -20,5 +20,6 @@ export const getEntry = (id) => api.get(`/entries/${id}`);
 export const createEntry = (data) => api.post('/entries', data);
 export const updateEntry = (id, data) => api.put(`/entries/${id}`, data);
 export const deleteEntry = (id) => api.delete(`/entries/${id}`);
+export const replyToEntry = (id, message) => api.post(`/entries/${id}/reply`, { message });
 
 export default api;
