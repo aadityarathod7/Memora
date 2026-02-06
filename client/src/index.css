@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background-color: #FDF8F3;
+  min-height: 100vh;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: Georgia, Cambria, 'Times New Roman', serif;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F5E6D8;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #D4A574;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #C4956A;
+}
+
+/* Textarea styling */
+textarea {
+  font-family: Georgia, Cambria, 'Times New Roman', serif;
+}
+
+/* Animation for AI response */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out;
+}
