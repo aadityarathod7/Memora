@@ -1,11 +1,19 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import OpenAI from 'openai';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+let client = null;
+
+const getClient = () => {
+  if (!client) {
+    client = new OpenAI({
+      apiKey: process.env.LLM_API_KEY || 'dummy-key',
+      baseURL: 'https://aiplatform.dev51.cbf.dev.paypalinc.com/cosmosai/llm/v1'
+    });
+  }
+  return client;
+};
 
 export const generateAIResponse = async (currentEntry, mood, recentEntries, userName) => {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
-
     // Build context from recent entries
     let context = '';
     if (recentEntries && recentEntries.length > 0) {
@@ -35,11 +43,17 @@ Today's journal entry:
 
 Respond as their caring friend would - acknowledge their feelings, connect with what they've shared, and offer warmth. If they're struggling, be supportive. If they're happy, celebrate with them. Be genuine and personal.`;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    return response.text();
+    const completion = await getClient().chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        { role: 'user', content: prompt }
+      ],
+      max_tokens: 1024
+    });
+
+    return completion.choices[0].message.content;
   } catch (error) {
-    console.error('Gemini API Error:', error);
+    console.error('LLM API Error:', error);
     return "I'm here for you, even though I had a little trouble finding the right words just now. Keep writing - I'm always listening.";
   }
 };

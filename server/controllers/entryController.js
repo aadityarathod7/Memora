@@ -1,5 +1,5 @@
 import Entry from '../models/Entry.js';
-import { generateAIResponse } from '../services/geminiService.js';
+import { generateAIResponse } from '../services/aiService.js';
 
 // @desc    Get all entries for user
 // @route   GET /api/entries
