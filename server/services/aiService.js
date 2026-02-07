@@ -116,3 +116,41 @@ HOW TO RESPOND:
     return "Sorry, I got a bit distracted there. What were you saying?";
   }
 };
+
+// Generate reflection questions based on entry content
+export const generateReflectionQuestionsAI = async (entryContent, mood) => {
+  try {
+    const prompt = `Based on this journal entry, generate 3 thoughtful reflection questions that could help the writer explore their thoughts and feelings more deeply.
+
+The entry (mood: ${mood}):
+"${entryContent}"
+
+Generate 3 questions that:
+1. Are open-ended and encourage deeper thinking
+2. Connect to specific things mentioned in the entry
+3. Help the writer gain insight or perspective
+4. Are warm and supportive in tone
+
+Return ONLY the 3 questions, one per line, no numbering or extra text.`;
+
+    const completion = await getClient().chat.completions.create({
+      model: 'gpt-4o',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 300
+    });
+
+    const questions = completion.choices[0].message.content
+      .split('\n')
+      .filter(q => q.trim().length > 0)
+      .slice(0, 3);
+
+    return questions;
+  } catch (error) {
+    console.error('LLM API Error:', error);
+    return [
+      "What emotions came up for you while writing this?",
+      "Is there something here you'd like to explore further?",
+      "What would make tomorrow better based on today?"
+    ];
+  }
+};

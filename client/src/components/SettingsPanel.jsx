@@ -14,8 +14,12 @@ import {
   FileJson,
   FileText,
   Loader2,
-  Check
+  Check,
+  Lock,
+  Bell
 } from 'lucide-react';
+import { PINSettings } from './PINLock';
+import ReminderSettings from './ReminderSettings';
 
 const themes = [
   { id: 'forest', name: 'Forest', primary: '#6F9463', bg: '#F5F1E8' },
@@ -40,6 +44,7 @@ const SettingsPanel = ({ onClose, onSettingsChange }) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [activeTab, setActiveTab] = useState('appearance'); // 'appearance', 'security', 'data'
 
   useEffect(() => {
     fetchData();
@@ -292,12 +297,49 @@ const SettingsPanel = ({ onClose, onSettingsChange }) => {
         </button>
       </div>
 
-      {/* Theme Selection */}
-      <div>
-        <div className="flex items-center gap-2 mb-3">
-          <Palette size={16} style={{ color: 'var(--app-accent)' }} />
-          <h3 className="font-serif font-medium" style={{ color: 'var(--text-primary)' }}>Theme</h3>
-        </div>
+      {/* Tabs */}
+      <div className="flex gap-2 border-b" style={{ borderColor: 'var(--border-light)' }}>
+        <button
+          onClick={() => setActiveTab('appearance')}
+          className={`px-4 py-2 font-serif transition-all ${activeTab === 'appearance' ? 'border-b-2' : ''}`}
+          style={{
+            color: activeTab === 'appearance' ? 'var(--app-accent)' : 'var(--text-muted)',
+            borderColor: activeTab === 'appearance' ? 'var(--app-accent)' : 'transparent'
+          }}
+        >
+          Appearance
+        </button>
+        <button
+          onClick={() => setActiveTab('security')}
+          className={`px-4 py-2 font-serif transition-all ${activeTab === 'security' ? 'border-b-2' : ''}`}
+          style={{
+            color: activeTab === 'security' ? 'var(--app-accent)' : 'var(--text-muted)',
+            borderColor: activeTab === 'security' ? 'var(--app-accent)' : 'transparent'
+          }}
+        >
+          Security & Reminders
+        </button>
+        <button
+          onClick={() => setActiveTab('data')}
+          className={`px-4 py-2 font-serif transition-all ${activeTab === 'data' ? 'border-b-2' : ''}`}
+          style={{
+            color: activeTab === 'data' ? 'var(--app-accent)' : 'var(--text-muted)',
+            borderColor: activeTab === 'data' ? 'var(--app-accent)' : 'transparent'
+          }}
+        >
+          Data & Export
+        </button>
+      </div>
+
+      {/* Appearance Tab */}
+      {activeTab === 'appearance' && (
+        <div className="space-y-6">
+          {/* Theme Selection */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Palette size={16} style={{ color: 'var(--app-accent)' }} />
+              <h3 className="font-serif font-medium" style={{ color: 'var(--text-primary)' }}>Theme</h3>
+            </div>
         <div className="grid grid-cols-5 gap-2">
           {themes.map((theme) => (
             <button
@@ -367,86 +409,108 @@ const SettingsPanel = ({ onClose, onSettingsChange }) => {
         </div>
       </div>
 
-      {/* Custom Tags Management */}
-      <div>
-        <div className="flex items-center gap-2 mb-3">
-          <Tag size={16} style={{ color: 'var(--app-accent)' }} />
-          <h3 className="font-serif font-medium" style={{ color: 'var(--text-primary)' }}>Custom Tags</h3>
-        </div>
-        <div className="flex flex-wrap gap-2 mb-3">
-          {customTags.map((tag) => (
-            <span
-              key={tag}
-              className="px-3 py-1 rounded-full text-sm flex items-center gap-1"
-              style={{ background: 'var(--app-accent-light)', color: 'var(--app-accent-dark)' }}
-            >
-              {tag}
+          {/* Custom Tags Management */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Tag size={16} style={{ color: 'var(--app-accent)' }} />
+              <h3 className="font-serif font-medium" style={{ color: 'var(--text-primary)' }}>Custom Tags</h3>
+            </div>
+            <div className="flex flex-wrap gap-2 mb-3">
+              {customTags.map((tag) => (
+                <span
+                  key={tag}
+                  className="px-3 py-1 rounded-full text-sm flex items-center gap-1"
+                  style={{ background: 'var(--app-accent-light)', color: 'var(--app-accent-dark)' }}
+                >
+                  {tag}
+                  <button
+                    onClick={() => handleDeleteTag(tag)}
+                    className="hover:opacity-70 transition-opacity"
+                  >
+                    <X size={14} />
+                  </button>
+                </span>
+              ))}
+            </div>
+            <form onSubmit={handleAddTag} className="flex gap-2">
+              <input
+                type="text"
+                value={newTag}
+                onChange={(e) => setNewTag(e.target.value)}
+                placeholder="Add new tag..."
+                className="flex-1 px-3 py-2 rounded-lg text-sm outline-none"
+                style={{
+                  background: 'var(--bg-parchment)',
+                  border: '1px solid var(--border-light)',
+                  color: 'var(--text-primary)'
+                }}
+              />
               <button
-                onClick={() => handleDeleteTag(tag)}
-                className="hover:opacity-70 transition-opacity"
+                type="submit"
+                disabled={!newTag.trim()}
+                className="px-3 py-2 rounded-lg disabled:opacity-50"
+                style={{ background: 'var(--app-accent)', color: 'white' }}
               >
-                <X size={14} />
+                <Plus size={18} />
               </button>
-            </span>
-          ))}
+            </form>
+          </div>
         </div>
-        <form onSubmit={handleAddTag} className="flex gap-2">
-          <input
-            type="text"
-            value={newTag}
-            onChange={(e) => setNewTag(e.target.value)}
-            placeholder="Add new tag..."
-            className="flex-1 px-3 py-2 rounded-lg text-sm outline-none"
-            style={{
-              background: 'var(--bg-parchment)',
-              border: '1px solid var(--border-light)',
-              color: 'var(--text-primary)'
-            }}
-          />
-          <button
-            type="submit"
-            disabled={!newTag.trim()}
-            className="px-3 py-2 rounded-lg disabled:opacity-50"
-            style={{ background: 'var(--app-accent)', color: 'white' }}
-          >
-            <Plus size={18} />
-          </button>
-        </form>
-      </div>
+      )}
 
-      {/* Export Data */}
-      <div className="p-4 rounded-xl" style={{ background: 'var(--bg-parchment)', border: '1px solid var(--border-light)' }}>
-        <div className="flex items-center gap-2 mb-3">
-          <Download size={16} style={{ color: 'var(--app-accent)' }} />
-          <h3 className="font-serif font-medium" style={{ color: 'var(--text-primary)' }}>Export Data</h3>
+      {/* Security & Reminders Tab */}
+      {activeTab === 'security' && (
+        <div className="space-y-6">
+          {/* PIN Lock Settings */}
+          <PINSettings />
+
+          {/* Divider */}
+          <div className="border-t" style={{ borderColor: 'var(--border-light)' }} />
+
+          {/* Reminder Settings */}
+          <ReminderSettings onClose={() => {}} />
         </div>
-        <p className="text-sm mb-3" style={{ color: 'var(--text-muted)' }}>
-          Download your journal entries as JSON backup or formatted PDF.
-        </p>
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={handleExport}
-            disabled={exporting}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm disabled:opacity-50"
-            style={{ background: 'var(--app-accent)', color: 'white' }}
-          >
-            {exporting ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              <FileJson size={16} />
-            )}
-            {exporting ? 'Exporting...' : 'JSON Backup'}
-          </button>
-          <button
-            onClick={handlePdfExport}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm"
-            style={{ background: 'var(--leather-brown)', color: 'white' }}
-          >
-            <FileText size={16} />
-            Export as PDF
-          </button>
+      )}
+
+      {/* Data & Export Tab */}
+      {activeTab === 'data' && (
+        <div className="space-y-6">
+
+          {/* Export Data */}
+          <div className="p-4 rounded-xl" style={{ background: 'var(--bg-parchment)', border: '1px solid var(--border-light)' }}>
+            <div className="flex items-center gap-2 mb-3">
+              <Download size={16} style={{ color: 'var(--app-accent)' }} />
+              <h3 className="font-serif font-medium" style={{ color: 'var(--text-primary)' }}>Export Data</h3>
+            </div>
+            <p className="text-sm mb-3" style={{ color: 'var(--text-muted)' }}>
+              Download your journal entries as JSON backup or formatted PDF.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={handleExport}
+                disabled={exporting}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm disabled:opacity-50"
+                style={{ background: 'var(--app-accent)', color: 'white' }}
+              >
+                {exporting ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <FileJson size={16} />
+                )}
+                {exporting ? 'Exporting...' : 'JSON Backup'}
+              </button>
+              <button
+                onClick={handlePdfExport}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm"
+                style={{ background: 'var(--leather-brown)', color: 'white' }}
+              >
+                <FileText size={16} />
+                Export as PDF
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

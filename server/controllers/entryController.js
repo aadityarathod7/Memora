@@ -497,5 +497,298 @@ export const getDailyPrompts = async (req, res) => {
   });
 };
 
+// @desc    Toggle pin status
+// @route   PUT /api/entries/:id/pin
+export const togglePin = async (req, res) => {
+  try {
+    const entry = await Entry.findById(req.params.id);
+
+    if (!entry) {
+      return res.status(404).json({ message: 'Entry not found' });
+    }
+
+    if (entry.user.toString() !== req.user._id.toString()) {
+      return res.status(401).json({ message: 'Not authorized' });
+    }
+
+    entry.isPinned = !entry.isPinned;
+    await entry.save();
+
+    res.json({ isPinned: entry.isPinned });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Update entry location
+// @route   PUT /api/entries/:id/location
+export const updateLocation = async (req, res) => {
+  try {
+    const { name, lat, lng } = req.body;
+    const entry = await Entry.findById(req.params.id);
+
+    if (!entry) {
+      return res.status(404).json({ message: 'Entry not found' });
+    }
+
+    if (entry.user.toString() !== req.user._id.toString()) {
+      return res.status(401).json({ message: 'Not authorized' });
+    }
+
+    entry.location = {
+      name: name || '',
+      coordinates: { lat, lng }
+    };
+    await entry.save();
+
+    res.json({ location: entry.location });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Generate reflection questions for an entry
+// @route   POST /api/entries/:id/reflect
+export const generateReflectionQuestions = async (req, res) => {
+  try {
+    const entry = await Entry.findById(req.params.id);
+
+    if (!entry) {
+      return res.status(404).json({ message: 'Entry not found' });
+    }
+
+    if (entry.user.toString() !== req.user._id.toString()) {
+      return res.status(401).json({ message: 'Not authorized' });
+    }
+
+    // Generate reflection questions using AI
+    const { generateReflectionQuestionsAI } = await import('../services/aiService.js');
+    const questions = await generateReflectionQuestionsAI(entry.content, entry.mood);
+
+    entry.reflectionQuestions = questions;
+    await entry.save();
+
+    res.json({ questions });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Get calendar data (entries grouped by date)
+// @route   GET /api/entries/calendar
+export const getCalendarData = async (req, res) => {
+  try {
+    const { year, month } = req.query;
+
+    let startDate, endDate;
+
+    if (year && month) {
+      startDate = new Date(parseInt(year), parseInt(month), 1);
+      endDate = new Date(parseInt(year), parseInt(month) + 1, 0);
+    } else {
+      // Default to current month
+      const now = new Date();
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    }
+
+    const entries = await Entry.find({
+      user: req.user._id,
+      createdAt: { $gte: startDate, $lte: endDate }
+    }).select('title mood createdAt isPinned isFavorite wordCount');
+
+    // Group by date
+    const calendarData = {};
+    entries.forEach(entry => {
+      const dateKey = entry.createdAt.toISOString().split('T')[0];
+      if (!calendarData[dateKey]) {
+        calendarData[dateKey] = [];
+      }
+      calendarData[dateKey].push({
+        _id: entry._id,
+        title: entry.title,
+        mood: entry.mood,
+        isPinned: entry.isPinned,
+        isFavorite: entry.isFavorite,
+        wordCount: entry.wordCount
+      });
+    });
+
+    res.json({ calendarData, year: startDate.getFullYear(), month: startDate.getMonth() });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Get mood heatmap data (for year view)
+// @route   GET /api/entries/heatmap
+export const getMoodHeatmap = async (req, res) => {
+  try {
+    const { year } = req.query;
+    const targetYear = year ? parseInt(year) : new Date().getFullYear();
+
+    const startDate = new Date(targetYear, 0, 1);
+    const endDate = new Date(targetYear, 11, 31);
+
+    const entries = await Entry.find({
+      user: req.user._id,
+      createdAt: { $gte: startDate, $lte: endDate }
+    }).select('mood createdAt wordCount');
+
+    // Create heatmap data
+    const heatmapData = {};
+    entries.forEach(entry => {
+      const dateKey = entry.createdAt.toISOString().split('T')[0];
+      if (!heatmapData[dateKey]) {
+        heatmapData[dateKey] = {
+          count: 0,
+          moods: [],
+          totalWords: 0
+        };
+      }
+      heatmapData[dateKey].count += 1;
+      heatmapData[dateKey].moods.push(entry.mood);
+      heatmapData[dateKey].totalWords += entry.wordCount || 0;
+    });
+
+    // Calculate dominant mood for each day
+    Object.keys(heatmapData).forEach(date => {
+      const moods = heatmapData[date].moods;
+      const moodCounts = {};
+      moods.forEach(mood => {
+        moodCounts[mood] = (moodCounts[mood] || 0) + 1;
+      });
+      heatmapData[date].dominantMood = Object.entries(moodCounts)
+        .sort((a, b) => b[1] - a[1])[0][0];
+    });
+
+    res.json({ heatmapData, year: targetYear });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Get timeline data
+// @route   GET /api/entries/timeline
+export const getTimeline = async (req, res) => {
+  try {
+    const { page = 1, limit = 20 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const entries = await Entry.find({ user: req.user._id })
+      .sort({ isPinned: -1, createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .select('title content mood createdAt isPinned isFavorite wordCount location images tags');
+
+    const total = await Entry.countDocuments({ user: req.user._id });
+
+    res.json({
+      entries,
+      page: parseInt(page),
+      totalPages: Math.ceil(total / parseInt(limit)),
+      total
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Upload image for entry
+// @route   POST /api/entries/:id/images
+export const addImage = async (req, res) => {
+  try {
+    const { imageUrl } = req.body;
+    const entry = await Entry.findById(req.params.id);
+
+    if (!entry) {
+      return res.status(404).json({ message: 'Entry not found' });
+    }
+
+    if (entry.user.toString() !== req.user._id.toString()) {
+      return res.status(401).json({ message: 'Not authorized' });
+    }
+
+    entry.images.push(imageUrl);
+    await entry.save();
+
+    res.json({ images: entry.images });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Remove image from entry
+// @route   DELETE /api/entries/:id/images
+export const removeImage = async (req, res) => {
+  try {
+    const { imageUrl } = req.body;
+    const entry = await Entry.findById(req.params.id);
+
+    if (!entry) {
+      return res.status(404).json({ message: 'Entry not found' });
+    }
+
+    if (entry.user.toString() !== req.user._id.toString()) {
+      return res.status(401).json({ message: 'Not authorized' });
+    }
+
+    entry.images = entry.images.filter(img => img !== imageUrl);
+    await entry.save();
+
+    res.json({ images: entry.images });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Add audio to entry
+// @route   PUT /api/entries/:id/audio
+export const updateAudio = async (req, res) => {
+  try {
+    const { audioUrl } = req.body;
+    const entry = await Entry.findById(req.params.id);
+
+    if (!entry) {
+      return res.status(404).json({ message: 'Entry not found' });
+    }
+
+    if (entry.user.toString() !== req.user._id.toString()) {
+      return res.status(401).json({ message: 'Not authorized' });
+    }
+
+    entry.audioUrl = audioUrl;
+    await entry.save();
+
+    res.json({ audioUrl: entry.audioUrl });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Save Spotify track to entry
+// @route   PUT /api/entries/:id/spotify
+export const saveSpotifyTrack = async (req, res) => {
+  try {
+    const { name, artist, albumArt, trackUrl } = req.body;
+    const entry = await Entry.findById(req.params.id);
+
+    if (!entry) {
+      return res.status(404).json({ message: 'Entry not found' });
+    }
+
+    if (entry.user.toString() !== req.user._id.toString()) {
+      return res.status(401).json({ message: 'Not authorized' });
+    }
+
+    entry.spotifyTrack = { name, artist, albumArt, trackUrl };
+    await entry.save();
+
+    res.json({ spotifyTrack: entry.spotifyTrack });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // Export updateStreak for use in createEntry
 export { updateStreak };

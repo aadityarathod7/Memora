@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { BookMarked, Mail, KeyRound, User, ArrowRight, ArrowLeft, Sparkles, Feather, Star } from 'lucide-react';
@@ -11,8 +11,15 @@ const Signup = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { signup } = useAuth();
+  const { signup, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate('/journal');
+    }
+  }, [user, authLoading, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -32,10 +39,9 @@ const Signup = () => {
 
     try {
       await signup(name, email, password);
-      navigate('/journal');
+      // Don't navigate here - let the useEffect handle it when user is set
     } catch (err) {
       setError(err.response?.data?.message || 'Something went wrong. Please try again.');
-    } finally {
       setLoading(false);
     }
   };

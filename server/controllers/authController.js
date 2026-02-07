@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
 
 // Generate JWT
@@ -194,6 +195,154 @@ export const exportUserData = async (req, res) => {
         createdAt: e.createdAt,
         updatedAt: e.updatedAt
       }))
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Update reminder settings
+// @route   PUT /api/auth/reminders
+export const updateReminders = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const { enabled, time, timezone, streakProtection } = req.body;
+
+    if (enabled !== undefined) user.reminders.enabled = enabled;
+    if (time !== undefined) user.reminders.time = time;
+    if (timezone !== undefined) user.reminders.timezone = timezone;
+    if (streakProtection !== undefined) user.reminders.streakProtection = streakProtection;
+
+    await user.save();
+
+    res.json({ reminders: user.reminders });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Get reminder settings
+// @route   GET /api/auth/reminders
+export const getReminders = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({ reminders: user.reminders });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Set PIN lock
+// @route   POST /api/auth/pin
+export const setPin = async (req, res) => {
+  try {
+    const { pin, biometricEnabled } = req.body;
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (pin) {
+      // Hash the PIN for security
+      const salt = await bcrypt.genSalt(10);
+      user.pinLock.pin = await bcrypt.hash(pin, salt);
+      user.pinLock.enabled = true;
+    }
+
+    if (biometricEnabled !== undefined) {
+      user.pinLock.biometricEnabled = biometricEnabled;
+    }
+
+    await user.save();
+
+    res.json({
+      pinLock: {
+        enabled: user.pinLock.enabled,
+        biometricEnabled: user.pinLock.biometricEnabled
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Verify PIN
+// @route   POST /api/auth/pin/verify
+export const verifyPin = async (req, res) => {
+  try {
+    const { pin } = req.body;
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (!user.pinLock.enabled || !user.pinLock.pin) {
+      return res.json({ verified: true });
+    }
+
+    const isMatch = await bcrypt.compare(pin, user.pinLock.pin);
+
+    res.json({ verified: isMatch });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Disable PIN lock
+// @route   DELETE /api/auth/pin
+export const disablePin = async (req, res) => {
+  try {
+    const { pin } = req.body;
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Verify current PIN before disabling
+    if (user.pinLock.enabled && user.pinLock.pin) {
+      const isMatch = await bcrypt.compare(pin, user.pinLock.pin);
+      if (!isMatch) {
+        return res.status(401).json({ message: 'Incorrect PIN' });
+      }
+    }
+
+    user.pinLock.enabled = false;
+    user.pinLock.pin = '';
+    user.pinLock.biometricEnabled = false;
+    await user.save();
+
+    res.json({ message: 'PIN lock disabled' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Get PIN lock status
+// @route   GET /api/auth/pin/status
+export const getPinStatus = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({
+      enabled: user.pinLock.enabled,
+      biometricEnabled: user.pinLock.biometricEnabled
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

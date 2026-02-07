@@ -8,9 +8,11 @@ import {
   deleteEntry,
   replyToEntry,
   toggleFavorite as toggleFavoriteApi,
+  togglePin as togglePinApi,
   updateEntryTags,
   updateEntry,
-  getCustomTags
+  getCustomTags,
+  getPinStatus
 } from '../services/api';
 import {
   BookOpen,
@@ -46,7 +48,12 @@ import {
   Tag,
   Edit3,
   Check,
-  Download
+  Download,
+  Pin,
+  Mic,
+  MapPin,
+  Flame,
+  WifiOff
 } from 'lucide-react';
 
 // Import feature panels
@@ -56,6 +63,14 @@ import SearchPanel from '../components/SearchPanel';
 import OnThisDayPanel from '../components/OnThisDayPanel';
 import PromptsPanel from '../components/PromptsPanel';
 import WeeklySummaryPanel from '../components/WeeklySummaryPanel';
+import CalendarView from '../components/CalendarView';
+import MoodHeatmap from '../components/MoodHeatmap';
+import TimelineView from '../components/TimelineView';
+import VoiceRecorder from '../components/VoiceRecorder';
+import LocationPicker from '../components/LocationPicker';
+import ReflectionQuestions from '../components/ReflectionQuestions';
+import { PINLockScreen } from '../components/PINLock';
+import { isOffline, cacheEntries, getCachedEntries, savePendingEntry, setupOfflineListeners } from '../services/offlineStorage';
 
 // Month names for filter
 const monthNames = [
@@ -78,7 +93,7 @@ const moodConfig = {
 };
 
 const Journal = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, loading: authLoading } = useAuth();
   const { loadUserSettings } = useTheme();
   const navigate = useNavigate();
   const replyInputRef = useRef(null);
@@ -120,22 +135,77 @@ const Journal = () => {
   const [customTags, setCustomTags] = useState([]);
   const [showTagPicker, setShowTagPicker] = useState(false);
 
+  // New feature states
+  const [entryLocation, setEntryLocation] = useState(null);
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
+  const [isPinLocked, setIsPinLocked] = useState(false);
+  const [checkingPin, setCheckingPin] = useState(true);
+
+  // Check PIN status on load
   useEffect(() => {
-    if (!user) {
-      navigate('/login');
-      return;
-    }
+    const checkPinStatus = async () => {
+      // Don't check PIN if we don't have a user yet
+      if (!user) {
+        setCheckingPin(false);
+        return;
+      }
+
+      try {
+        const res = await getPinStatus();
+        if (res.data.enabled) {
+          setIsPinLocked(true);
+        }
+      } catch (err) {
+        // If offline or error, just don't lock
+        console.error('Failed to check PIN status:', err.message);
+      } finally {
+        setCheckingPin(false);
+      }
+    };
+
+    checkPinStatus();
+  }, [user]);
+
+  // Setup offline listeners
+  useEffect(() => {
+    setIsOfflineMode(!navigator.onLine);
+
+    const cleanup = setupOfflineListeners(
+      () => setIsOfflineMode(false),
+      () => setIsOfflineMode(true)
+    );
+
+    return cleanup;
+  }, []);
+
+  useEffect(() => {
+    // User is guaranteed to exist because of ProtectedRoute
     fetchEntries();
     fetchCustomTags();
     loadUserSettings(); // Load theme settings from server
-  }, [user, navigate]);
+  }, []);
 
   const fetchEntries = async () => {
     try {
-      const response = await getEntries();
-      setEntries(response.data);
+      if (isOffline()) {
+        // Load from cache when offline
+        const cached = await getCachedEntries();
+        setEntries(cached);
+      } else {
+        const response = await getEntries();
+        setEntries(response.data);
+        // Cache entries for offline use
+        await cacheEntries(response.data);
+      }
     } catch (err) {
       console.error('Failed to load entries');
+      // Try loading from cache on error
+      try {
+        const cached = await getCachedEntries();
+        setEntries(cached);
+      } catch (cacheErr) {
+        console.error('Failed to load cached entries');
+      }
     } finally {
       setFetchingEntries(false);
     }
@@ -164,12 +234,19 @@ const Journal = () => {
         day: 'numeric'
       });
 
-      const response = await createEntry({
+      const entryData = {
         title,
         content: journalContent,
         mood: feeling || 'neutral',
         tags: entryTags
-      });
+      };
+
+      // Add location if available
+      if (entryLocation) {
+        entryData.location = entryLocation;
+      }
+
+      const response = await createEntry(entryData);
 
       const newEntry = response.data;
       setEntries([newEntry, ...entries]);
@@ -177,6 +254,7 @@ const Journal = () => {
       setJournalContent('');
       setFeeling('');
       setEntryTags([]);
+      setEntryLocation(null);
       setShowWriting(false);
     } catch (err) {
       console.error('Failed to save entry');
@@ -237,6 +315,29 @@ const Journal = () => {
     } catch (err) {
       console.error('Failed to toggle favorite');
     }
+  };
+
+  const handleTogglePin = async () => {
+    if (!selectedEntry) return;
+
+    try {
+      const res = await togglePinApi(selectedEntry._id);
+      const updatedEntry = { ...selectedEntry, isPinned: res.data.isPinned };
+      setSelectedEntry(updatedEntry);
+      setEntries(entries.map(e =>
+        e._id === selectedEntry._id ? updatedEntry : e
+      ));
+    } catch (err) {
+      console.error('Failed to toggle pin');
+    }
+  };
+
+  const handleVoiceTranscript = (transcript) => {
+    setJournalContent(prev => prev + transcript);
+  };
+
+  const handlePinUnlock = () => {
+    setIsPinLocked(false);
   };
 
   const handleUpdateTags = async (tags) => {
@@ -448,7 +549,13 @@ const Journal = () => {
     }, 500);
   };
 
-  if (fetchingEntries) {
+  // Show PIN lock screen if enabled
+  if (isPinLocked && !checkingPin) {
+    return <PINLockScreen onUnlock={handlePinUnlock} />;
+  }
+
+  // Show loading screen while auth is loading or fetching data
+  if (authLoading || fetchingEntries || checkingPin) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-cream)' }}>
         <div className="text-center">
@@ -482,7 +589,15 @@ const Journal = () => {
             </Link>
 
             {/* Feature buttons */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Offline indicator */}
+              {isOfflineMode && (
+                <div className="flex items-center gap-1 px-2 py-1 rounded-lg" style={{ background: '#fbbf24', color: '#78350f' }}>
+                  <WifiOff size={14} />
+                  <span className="text-xs font-medium hidden sm:inline">Offline</span>
+                </div>
+              )}
+
               <button
                 onClick={() => openPanel('search')}
                 className="p-2 rounded-lg transition-all hover:shadow-md"
@@ -490,6 +605,30 @@ const Journal = () => {
                 title="Search"
               >
                 <Search size={18} />
+              </button>
+              <button
+                onClick={() => openPanel('calendar')}
+                className="p-2 rounded-lg transition-all hover:shadow-md"
+                style={{ color: 'var(--text-secondary)', background: 'var(--bg-paper)' }}
+                title="Calendar"
+              >
+                <Calendar size={18} />
+              </button>
+              <button
+                onClick={() => openPanel('heatmap')}
+                className="p-2 rounded-lg transition-all hover:shadow-md"
+                style={{ color: 'var(--text-secondary)', background: 'var(--bg-paper)' }}
+                title="Mood Heatmap"
+              >
+                <Flame size={18} />
+              </button>
+              <button
+                onClick={() => openPanel('timeline')}
+                className="p-2 rounded-lg transition-all hover:shadow-md"
+                style={{ color: 'var(--text-secondary)', background: 'var(--bg-paper)' }}
+                title="Timeline"
+              >
+                <Clock size={18} />
               </button>
               <button
                 onClick={() => openPanel('stats')}
@@ -501,7 +640,7 @@ const Journal = () => {
               </button>
               <button
                 onClick={() => openPanel('prompts')}
-                className="p-2 rounded-lg transition-all hover:shadow-md hidden sm:block"
+                className="p-2 rounded-lg transition-all hover:shadow-md"
                 style={{ color: 'var(--text-secondary)', background: 'var(--bg-paper)' }}
                 title="Writing Prompts"
               >
@@ -793,6 +932,9 @@ const Journal = () => {
                 {activePanel === 'onthisday' && <OnThisDayPanel onClose={closePanel} onSelectEntry={handleSelectEntry} />}
                 {activePanel === 'prompts' && <PromptsPanel onClose={closePanel} onSelectPrompt={handleSelectPrompt} />}
                 {activePanel === 'summary' && <WeeklySummaryPanel onClose={closePanel} onSelectEntry={handleSelectEntry} />}
+                {activePanel === 'calendar' && <CalendarView onClose={closePanel} onSelectEntry={handleSelectEntry} />}
+                {activePanel === 'heatmap' && <MoodHeatmap onClose={closePanel} />}
+                {activePanel === 'timeline' && <TimelineView onClose={closePanel} onSelectEntry={handleSelectEntry} />}
 
                 {!activePanel && showWriting ? (
                   /* Writing new entry */
@@ -815,6 +957,12 @@ const Journal = () => {
                           <Clock size={14} />
                           {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                         </div>
+                      </div>
+
+                      {/* Voice recorder and Location */}
+                      <div className="flex items-center justify-between mb-4">
+                        <VoiceRecorder onTranscript={handleVoiceTranscript} disabled={loading} />
+                        <LocationPicker onLocationUpdate={setEntryLocation} />
                       </div>
 
                       <div className="mb-6">
@@ -941,6 +1089,14 @@ const Journal = () => {
                         {/* Action buttons */}
                         <div className="flex items-center gap-1 absolute right-0 top-0">
                           <button
+                            onClick={handleTogglePin}
+                            className="p-2 rounded-lg transition-colors hover:bg-yellow-50"
+                            style={{ color: selectedEntry.isPinned ? 'var(--gold-accent)' : 'var(--text-muted)' }}
+                            title={selectedEntry.isPinned ? 'Unpin entry' : 'Pin entry'}
+                          >
+                            <Pin size={18} fill={selectedEntry.isPinned ? 'var(--gold-accent)' : 'none'} />
+                          </button>
+                          <button
                             onClick={handleToggleFavorite}
                             className="p-2 rounded-lg transition-colors hover:bg-yellow-50"
                             style={{ color: selectedEntry.isFavorite ? 'var(--gold-accent)' : 'var(--text-muted)' }}
@@ -1036,10 +1192,20 @@ const Journal = () => {
                           </div>
                         </div>
                       ) : (
-                        /* Entry content with drop cap effect */
-                        <div className="drop-cap text-lg leading-relaxed whitespace-pre-wrap handwritten ink-text" style={{ fontSize: '1.35rem' }}>
-                          {selectedEntry.content}
-                        </div>
+                        <>
+                          {/* Entry content with drop cap effect */}
+                          <div className="drop-cap text-lg leading-relaxed whitespace-pre-wrap handwritten ink-text" style={{ fontSize: '1.35rem' }}>
+                            {selectedEntry.content}
+                          </div>
+
+                          {/* Location display */}
+                          {selectedEntry.location?.name && (
+                            <div className="mt-4 flex items-center gap-2 text-sm" style={{ color: 'var(--text-muted)' }}>
+                              <MapPin size={14} />
+                              <span>{selectedEntry.location.name}</span>
+                            </div>
+                          )}
+                        </>
                       )}
 
                       {/* Tag picker */}
@@ -1087,6 +1253,15 @@ const Journal = () => {
                             </div>
                           )}
                         </div>
+                      )}
+
+                      {/* Reflection Questions */}
+                      {!isEditing && (
+                        <ReflectionQuestions
+                          entryId={selectedEntry._id}
+                          existingQuestions={selectedEntry.reflectionQuestions}
+                          onQuestionClick={(question) => setReplyMessage(question)}
+                        />
                       )}
                     </div>
 

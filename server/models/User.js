@@ -55,6 +55,63 @@ const userSchema = new mongoose.Schema({
   customTags: {
     type: [String],
     default: ['personal', 'work', 'family', 'health', 'goals', 'gratitude', 'dreams']
+  },
+  // Reminder settings
+  reminders: {
+    enabled: {
+      type: Boolean,
+      default: false
+    },
+    time: {
+      type: String, // Format: "HH:MM"
+      default: '20:00'
+    },
+    timezone: {
+      type: String,
+      default: 'UTC'
+    },
+    streakProtection: {
+      type: Boolean,
+      default: true
+    },
+    lastNotified: {
+      type: Date,
+      default: null
+    }
+  },
+  // PIN lock for privacy
+  pinLock: {
+    enabled: {
+      type: Boolean,
+      default: false
+    },
+    pin: {
+      type: String, // Hashed PIN
+      default: ''
+    },
+    biometricEnabled: {
+      type: Boolean,
+      default: false
+    }
+  },
+  // Spotify integration
+  spotify: {
+    connected: {
+      type: Boolean,
+      default: false
+    },
+    accessToken: {
+      type: String,
+      default: ''
+    },
+    refreshToken: {
+      type: String,
+      default: ''
+    },
+    tokenExpiry: {
+      type: Date,
+      default: null
+    }
   }
 }, {
   timestamps: true

@@ -65,6 +65,44 @@ const entrySchema = new mongoose.Schema({
   wordCount: {
     type: Number,
     default: 0
+  },
+  // Pin entry to top
+  isPinned: {
+    type: Boolean,
+    default: false
+  },
+  // Audio memo URL
+  audioUrl: {
+    type: String,
+    default: ''
+  },
+  // Location data
+  location: {
+    name: {
+      type: String,
+      default: ''
+    },
+    coordinates: {
+      lat: { type: Number },
+      lng: { type: Number }
+    }
+  },
+  // AI reflection questions
+  reflectionQuestions: {
+    type: [String],
+    default: []
+  },
+  // Spotify track playing while writing
+  spotifyTrack: {
+    name: { type: String, default: '' },
+    artist: { type: String, default: '' },
+    albumArt: { type: String, default: '' },
+    trackUrl: { type: String, default: '' }
+  },
+  // Voice entry flag
+  isVoiceEntry: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true
