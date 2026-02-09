@@ -16,9 +16,9 @@ const moodColors = {
 };
 
 const MoodHeatmap = ({ onClose }) => {
-  // Default to 2025 to show existing entries (or use current year if in 2025+)
+  // Default to 2026 to show existing entries (or use current year if in 2026+)
   const currentYear = new Date().getFullYear();
-  const [year, setYear] = useState(currentYear >= 2025 ? 2025 : currentYear);
+  const [year, setYear] = useState(currentYear >= 2026 ? 2026 : currentYear);
   const [heatmapData, setHeatmapData] = useState({});
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({});
@@ -123,7 +123,7 @@ const MoodHeatmap = ({ onClose }) => {
         </div>
         <button
           onClick={onClose}
-          className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+          className="p-2 transition-colors rounded-lg hover:bg-gray-100"
           style={{ color: 'var(--text-muted)' }}
         >
           <X size={20} />
@@ -134,7 +134,7 @@ const MoodHeatmap = ({ onClose }) => {
       <div className="flex items-center justify-center gap-4 mb-6">
         <button
           onClick={() => setYear(year - 1)}
-          className="p-2 rounded-lg transition-colors"
+          className="p-2 transition-colors rounded-lg"
           style={{ background: 'var(--bg-parchment)', color: 'var(--text-secondary)' }}
         >
           <ChevronLeft size={20} />
@@ -145,7 +145,7 @@ const MoodHeatmap = ({ onClose }) => {
         <button
           onClick={() => setYear(year + 1)}
           disabled={year >= new Date().getFullYear()}
-          className="p-2 rounded-lg transition-colors disabled:opacity-50"
+          className="p-2 transition-colors rounded-lg disabled:opacity-50"
           style={{ background: 'var(--bg-parchment)', color: 'var(--text-secondary)' }}
         >
           <ChevronRight size={20} />
@@ -160,20 +160,20 @@ const MoodHeatmap = ({ onClose }) => {
         <>
           {/* Stats summary */}
           <div className="grid grid-cols-3 gap-4 mb-6">
-            <div className="text-center p-3 rounded-lg" style={{ background: 'var(--bg-parchment)' }}>
-              <div className="text-2xl font-serif font-bold" style={{ color: 'var(--app-accent)' }}>
+            <div className="p-3 text-center rounded-lg" style={{ background: 'var(--bg-parchment)' }}>
+              <div className="font-serif text-2xl font-bold" style={{ color: 'var(--app-accent)' }}>
                 {stats.totalEntries || 0}
               </div>
               <div className="text-xs" style={{ color: 'var(--text-muted)' }}>Entries</div>
             </div>
-            <div className="text-center p-3 rounded-lg" style={{ background: 'var(--bg-parchment)' }}>
-              <div className="text-2xl font-serif font-bold" style={{ color: 'var(--app-accent)' }}>
+            <div className="p-3 text-center rounded-lg" style={{ background: 'var(--bg-parchment)' }}>
+              <div className="font-serif text-2xl font-bold" style={{ color: 'var(--app-accent)' }}>
                 {stats.activeDays || 0}
               </div>
               <div className="text-xs" style={{ color: 'var(--text-muted)' }}>Active Days</div>
             </div>
-            <div className="text-center p-3 rounded-lg" style={{ background: 'var(--bg-parchment)' }}>
-              <div className="text-2xl font-serif font-bold capitalize" style={{ color: moodColors[stats.topMood] || 'var(--app-accent)' }}>
+            <div className="p-3 text-center rounded-lg" style={{ background: 'var(--bg-parchment)' }}>
+              <div className="font-serif text-2xl font-bold capitalize" style={{ color: moodColors[stats.topMood] || 'var(--app-accent)' }}>
                 {stats.topMood || '-'}
               </div>
               <div className="text-xs" style={{ color: 'var(--text-muted)' }}>Top Mood</div>
@@ -181,7 +181,7 @@ const MoodHeatmap = ({ onClose }) => {
           </div>
 
           {/* Heatmap */}
-          <div className="overflow-x-auto pb-4">
+          <div className="pb-4 overflow-x-auto">
             {/* Month labels */}
             <div className="flex mb-1 ml-8">
               {monthLabels.map(({ month, weekIndex }, i) => (
@@ -205,7 +205,7 @@ const MoodHeatmap = ({ onClose }) => {
                 {weekDays.map((day, i) => (
                   <div
                     key={i}
-                    className="text-xs h-3 flex items-center"
+                    className="flex items-center h-3 text-xs"
                     style={{ color: 'var(--text-muted)', fontSize: '10px' }}
                   >
                     {i % 2 === 1 ? day.charAt(0) : ''}
@@ -248,7 +248,7 @@ const MoodHeatmap = ({ onClose }) => {
 
           {/* Hover tooltip */}
           {hoveredDay && (
-            <div className="mt-4 p-3 rounded-lg animate-fade-in-up" style={{ background: 'var(--bg-parchment)', border: '1px solid var(--border-light)' }}>
+            <div className="p-3 mt-4 rounded-lg animate-fade-in-up" style={{ background: 'var(--bg-parchment)', border: '1px solid var(--border-light)' }}>
               <div className="font-serif font-medium" style={{ color: 'var(--text-primary)' }}>
                 {hoveredDay.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
               </div>
@@ -265,7 +265,7 @@ const MoodHeatmap = ({ onClose }) => {
           )}
 
           {/* Legend */}
-          <div className="mt-6 pt-4 border-t" style={{ borderColor: 'var(--border-light)' }}>
+          <div className="pt-4 mt-6 border-t" style={{ borderColor: 'var(--border-light)' }}>
             <div className="flex items-center justify-between">
               <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Less</span>
               <div className="flex gap-1">
