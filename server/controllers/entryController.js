@@ -651,18 +651,47 @@ export const getMoodHeatmap = async (req, res) => {
       heatmapData[dateKey].totalWords += entry.wordCount || 0;
     });
 
-    // Calculate dominant mood for each day
+    // Calculate dominant mood for each day and prepare heatmap
+    const heatmap = {};
     Object.keys(heatmapData).forEach(date => {
       const moods = heatmapData[date].moods;
       const moodCounts = {};
       moods.forEach(mood => {
         moodCounts[mood] = (moodCounts[mood] || 0) + 1;
       });
-      heatmapData[date].dominantMood = Object.entries(moodCounts)
+      const dominantMood = Object.entries(moodCounts)
         .sort((a, b) => b[1] - a[1])[0][0];
+
+      heatmap[date] = {
+        count: heatmapData[date].count,
+        mood: dominantMood
+      };
     });
 
-    res.json({ heatmapData, year: targetYear });
+    // Calculate stats
+    const totalEntries = entries.length;
+    const activeDays = Object.keys(heatmap).length;
+
+    // Calculate top mood
+    const allMoodCounts = {};
+    entries.forEach(entry => {
+      if (entry.mood) {
+        allMoodCounts[entry.mood] = (allMoodCounts[entry.mood] || 0) + 1;
+      }
+    });
+    const topMood = Object.entries(allMoodCounts).length > 0
+      ? Object.entries(allMoodCounts).sort((a, b) => b[1] - a[1])[0][0]
+      : null;
+
+    res.json({
+      heatmap,
+      stats: {
+        totalEntries,
+        activeDays,
+        topMood
+      },
+      year: targetYear
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
