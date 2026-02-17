@@ -135,7 +135,7 @@ const WeeklySummaryPanel = ({ onClose, onSelectEntry }) => {
             <Calendar size={16} style={{ color: 'var(--app-accent)' }} />
             This Week's Entries
           </h3>
-          <div className="space-y-2 max-h-[40vh] overflow-y-auto">
+          <div className="space-y-2 max-h-[70vh] md:max-h-[40vh] overflow-y-auto">
             {summary.entries.map((entry) => (
               <button
                 key={entry.id}

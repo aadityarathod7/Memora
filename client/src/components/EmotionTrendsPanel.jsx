@@ -216,7 +216,7 @@ const EmotionTrendsPanel = ({ onClose }) => {
       </div>
 
       {/* Daily Breakdown */}
-      <div className="p-4 rounded-xl max-h-64 overflow-y-auto" style={{ background: 'var(--bg-parchment)', border: '1px solid var(--border-light)' }}>
+      <div className="p-4 rounded-xl max-h-72 md:max-h-64 overflow-y-auto" style={{ background: 'var(--bg-parchment)', border: '1px solid var(--border-light)' }}>
         <h3 className="font-serif font-medium mb-3 sticky top-0" style={{ color: 'var(--text-primary)', background: 'var(--bg-parchment)' }}>
           Daily Breakdown
         </h3>

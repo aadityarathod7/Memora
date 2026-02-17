@@ -41,11 +41,11 @@ const Home = () => {
           <Feather size={16} style={{ color: 'var(--gold-accent)' }} />
         </div>
 
-        <h1 className="text-6xl font-serif mb-4 tracking-wide font-semibold" style={{ color: 'var(--text-primary)' }}>
+        <h1 className="text-4xl sm:text-5xl md:text-6xl font-serif mb-4 tracking-wide font-semibold" style={{ color: 'var(--text-primary)' }}>
           Memora
         </h1>
 
-        <p className="text-xl mb-4 leading-relaxed font-serif italic" style={{ color: 'var(--text-secondary)' }}>
+        <p className="text-lg sm:text-xl mb-4 leading-relaxed font-serif italic" style={{ color: 'var(--text-secondary)' }}>
           "Where memories talk back..."
         </p>
 
@@ -53,7 +53,7 @@ const Home = () => {
           <Star size={10} style={{ color: 'var(--gold-accent)' }} />
         </div>
 
-        <p className="text-lg mb-10 leading-relaxed max-w-md mx-auto" style={{ color: 'var(--text-muted)', fontFamily: "'EB Garamond', Georgia, serif" }}>
+        <p className="text-base sm:text-lg mb-10 leading-relaxed max-w-md mx-auto px-4" style={{ color: 'var(--text-muted)', fontFamily: "'EB Garamond', Georgia, serif" }}>
           A living journal that listens, remembers, and responds like a human.
           Share your thoughts, feelings, and moments — Memora is always here for you.
         </p>
@@ -62,7 +62,7 @@ const Home = () => {
           {user ? (
             <Link
               to="/journal"
-              className="px-8 py-4 btn-accent text-white rounded-xl font-medium shadow-lg text-lg flex items-center gap-3"
+              className="px-6 py-3 sm:px-8 sm:py-4 btn-accent text-white rounded-xl font-medium shadow-lg text-base sm:text-lg flex items-center gap-2 sm:gap-3"
             >
               <Feather size={22} />
               Open My Journal
@@ -71,14 +71,14 @@ const Home = () => {
             <>
               <Link
                 to="/signup"
-                className="px-8 py-4 btn-accent text-white rounded-xl font-medium shadow-lg text-lg flex items-center gap-3"
+                className="px-6 py-3 sm:px-8 sm:py-4 btn-accent text-white rounded-xl font-medium shadow-lg text-base sm:text-lg flex items-center gap-2 sm:gap-3"
               >
-                <Feather size={22} />
+                <Feather size={20} className="sm:w-[22px] sm:h-[22px]" />
                 Begin Your Story
               </Link>
               <Link
                 to="/login"
-                className="px-8 py-4 rounded-xl font-medium transition-all text-lg flex items-center gap-2 hover:shadow-md"
+                className="px-6 py-3 sm:px-8 sm:py-4 rounded-xl font-medium transition-all text-base sm:text-lg flex items-center gap-2 hover:shadow-md"
                 style={{ color: 'var(--app-accent-dark)', background: 'var(--bg-paper)', border: '1px solid var(--border-light)' }}
               >
                 <LogIn size={20} />

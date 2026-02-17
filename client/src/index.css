@@ -441,6 +441,13 @@ body {
   width: 10px;
 }
 
+/* Thinner scrollbar for touch devices */
+@media (hover: none) and (pointer: coarse) {
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+}
+
 ::-webkit-scrollbar-track {
   background: linear-gradient(90deg, #E8E4DB, #D4D0C7, #E8E4DB);
   border-radius: 5px;
@@ -732,5 +739,78 @@ input.book-input:focus {
 @media (max-width: 768px) {
   .space-y-6.animate-fade-in-up {
     touch-action: pan-y;
+  }
+}
+
+/* ===== MOBILE MENU ANIMATION ===== */
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s ease-out;
+}
+
+/* ===== MOBILE RESPONSIVE FIXES ===== */
+@media (max-width: 1023px) {
+  /* Prevent horizontal scrolling */
+  body {
+    overflow-x: hidden;
+  }
+  
+  /* Ensure book pages stack vertically */
+  .book-page {
+    width: 100%;
+    min-width: 0;
+  }
+  
+  /* Ensure main container doesn't overflow */
+  main {
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+}
+
+/* Ensure all direct children of flex containers don't overflow */
+.flex > * {
+  min-width: 0;
+}
+
+/* Utility for thin scrollbars on mobile */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--app-accent) var(--bg-parchment);
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--app-accent);
+  border-radius: 2px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: var(--bg-parchment);
+}
+
+/* Better tap target sizes for mobile */
+@media (max-width: 640px) {
+  button, a {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Exception for small icon-only buttons that already have proper sizing */
+  button.p-2\.5,
+  button.min-w-\[44px\] {
+    /* Already sized correctly, no override needed */
   }
 }

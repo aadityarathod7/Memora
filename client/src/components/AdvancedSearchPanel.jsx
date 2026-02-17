@@ -340,7 +340,7 @@ const AdvancedSearchPanel = ({ onClose, onSelectEntry }) => {
       )}
 
       {/* Results */}
-      <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+      <div className="space-y-2 max-h-[70vh] md:max-h-[50vh] overflow-y-auto">
         {loading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 size={24} className="animate-spin" style={{ color: 'var(--app-accent)' }} />

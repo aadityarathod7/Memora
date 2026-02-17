@@ -149,7 +149,7 @@ const TimelineView = ({ onClose, onSelectEntry }) => {
           <p className="font-serif text-lg" style={{ color: 'var(--text-secondary)' }}>No entries yet</p>
         </div>
       ) : (
-        <div className="max-h-[60vh] overflow-y-auto pr-2">
+        <div className="max-h-[80vh] sm:max-h-[60vh] overflow-y-auto pr-2">
           {/* Pinned entries section */}
           {pinnedEntries.length > 0 && (
             <div className="mb-6">

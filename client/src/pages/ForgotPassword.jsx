@@ -28,7 +28,7 @@ const ForgotPassword = () => {
     <div className="min-h-screen flex items-center justify-center px-4" style={{ background: 'var(--bg-cream)' }}>
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="font-serif text-4xl mb-2" style={{ color: 'var(--app-accent)' }}>
+          <h1 className="font-serif text-3xl sm:text-4xl mb-2" style={{ color: 'var(--app-accent)' }}>
             Memora
           </h1>
           <p className="font-serif italic" style={{ color: 'var(--text-muted)' }}>
@@ -36,11 +36,11 @@ const ForgotPassword = () => {
           </p>
         </div>
 
-        <div className="book-page rounded-lg p-8 shadow-lg" style={{ background: 'var(--bg-paper)' }}>
+        <div className="book-page rounded-lg p-6 sm:p-8 shadow-lg" style={{ background: 'var(--bg-paper)' }}>
           {sent ? (
             <div className="text-center">
               <CheckCircle size={64} className="mx-auto mb-4" style={{ color: '#22c55e' }} />
-              <h2 className="font-serif text-2xl mb-3" style={{ color: 'var(--text-primary)' }}>
+              <h2 className="font-serif text-xl sm:text-2xl mb-3" style={{ color: 'var(--text-primary)' }}>
                 Check Your Email
               </h2>
               <p className="mb-6" style={{ color: 'var(--text-secondary)' }}>
@@ -60,7 +60,7 @@ const ForgotPassword = () => {
             </div>
           ) : (
             <>
-              <h2 className="font-serif text-2xl mb-2" style={{ color: 'var(--text-primary)' }}>
+              <h2 className="font-serif text-xl sm:text-2xl mb-2" style={{ color: 'var(--text-primary)' }}>
                 Reset Password
               </h2>
               <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>

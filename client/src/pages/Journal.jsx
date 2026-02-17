@@ -57,7 +57,9 @@ import {
   Flame,
   WifiOff,
   Activity,
-  Target
+  Target,
+  Menu,
+  ArrowLeft
 } from 'lucide-react';
 
 // Import feature panels
@@ -151,6 +153,7 @@ const Journal = () => {
   const [isOfflineMode, setIsOfflineMode] = useState(false);
   const [isPinLocked, setIsPinLocked] = useState(false);
   const [checkingPin, setCheckingPin] = useState(true);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   // Check PIN status on load
   useEffect(() => {
     const checkPinStatus = async () => {
@@ -668,7 +671,7 @@ const Journal = () => {
             </Link>
 
             {/* Feature buttons */}
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
               {/* Offline indicator */}
               {isOfflineMode && (
                 <div className="flex items-center gap-1 px-2 py-1 rounded-lg" style={{ background: '#fbbf24', color: '#78350f' }}>
@@ -677,102 +680,686 @@ const Journal = () => {
                 </div>
               )}
 
-              <button
-                onClick={() => openPanel('search')}
-                className="p-2 rounded-lg transition-all hover:shadow-md"
-                style={{ color: 'var(--text-secondary)', background: 'var(--bg-paper)' }}
-                title="Search"
-              >
-                <Search size={18} />
-              </button>
-              <button
-                onClick={() => openPanel('heatmap')}
-                className="p-2 rounded-lg transition-all hover:shadow-md"
-                style={{ color: 'var(--text-secondary)', background: 'var(--bg-paper)' }}
-                title="Mood Heatmap"
-              >
-                <Flame size={18} />
-              </button>
-              <button
-                onClick={() => openPanel('timeline')}
-                className="p-2 rounded-lg transition-all hover:shadow-md"
-                style={{ color: 'var(--text-secondary)', background: 'var(--bg-paper)' }}
-                title="Timeline"
-              >
-                <Clock size={18} />
-              </button>
-              <button
-                onClick={() => openPanel('stats')}
-                className="p-2 rounded-lg transition-all hover:shadow-md"
-                style={{ color: 'var(--text-secondary)', background: 'var(--bg-paper)' }}
-                title="Stats"
-              >
-                <TrendingUp size={18} />
-              </button>
-              <button
-                onClick={() => openPanel('monthly-summary')}
-                className="p-2 rounded-lg transition-all hover:shadow-md"
-                style={{ color: 'var(--text-secondary)', background: 'var(--bg-paper)' }}
-                title="Monthly Summary"
-              >
-                <Calendar size={18} />
-              </button>
-              <button
-                onClick={() => openPanel('emotion-trends')}
-                className="p-2 rounded-lg transition-all hover:shadow-md"
-                style={{ color: 'var(--text-secondary)', background: 'var(--bg-paper)' }}
-                title="Emotion Trends"
-              >
-                <Activity size={18} />
-              </button>
-              <button
-                onClick={() => openPanel('goals')}
-                className="p-2 rounded-lg transition-all hover:shadow-md"
-                style={{ color: 'var(--text-secondary)', background: 'var(--bg-paper)' }}
-                title="Goals & Challenges"
-              >
-                <Target size={18} />
-              </button>
-              <button
-                onClick={() => openPanel('prompts')}
-                className="p-2 rounded-lg transition-all hover:shadow-md"
-                style={{ color: 'var(--text-secondary)', background: 'var(--bg-paper)' }}
-                title="Writing Prompts"
-              >
-                <Lightbulb size={18} />
-              </button>
-              <button
-                onClick={() => openPanel('settings')}
-                className="p-2 rounded-lg transition-all hover:shadow-md"
-                style={{ color: 'var(--text-secondary)', background: 'var(--bg-paper)' }}
-                title="Settings"
-              >
-                <Settings size={18} />
-              </button>
+              {/* Desktop feature buttons - hidden on mobile */}
+              <div className="hidden md:flex items-center gap-2">
+                <button
+                  onClick={() => openPanel('search')}
+                  className="p-2 rounded-lg transition-all hover:shadow-md"
+                  style={{ color: 'var(--text-secondary)', background: 'var(--bg-paper)' }}
+                  title="Search"
+                >
+                  <Search size={18} />
+                </button>
+                <button
+                  onClick={() => openPanel('heatmap')}
+                  className="p-2 rounded-lg transition-all hover:shadow-md"
+                  style={{ color: 'var(--text-secondary)', background: 'var(--bg-paper)' }}
+                  title="Mood Heatmap"
+                >
+                  <Flame size={18} />
+                </button>
+                <button
+                  onClick={() => openPanel('timeline')}
+                  className="p-2 rounded-lg transition-all hover:shadow-md"
+                  style={{ color: 'var(--text-secondary)', background: 'var(--bg-paper)' }}
+                  title="Timeline"
+                >
+                  <Clock size={18} />
+                </button>
+                <button
+                  onClick={() => openPanel('stats')}
+                  className="p-2 rounded-lg transition-all hover:shadow-md"
+                  style={{ color: 'var(--text-secondary)', background: 'var(--bg-paper)' }}
+                  title="Stats"
+                >
+                  <TrendingUp size={18} />
+                </button>
+                <button
+                  onClick={() => openPanel('monthly-summary')}
+                  className="p-2 rounded-lg transition-all hover:shadow-md"
+                  style={{ color: 'var(--text-secondary)', background: 'var(--bg-paper)' }}
+                  title="Monthly Summary"
+                >
+                  <Calendar size={18} />
+                </button>
+                <button
+                  onClick={() => openPanel('emotion-trends')}
+                  className="p-2 rounded-lg transition-all hover:shadow-md"
+                  style={{ color: 'var(--text-secondary)', background: 'var(--bg-paper)' }}
+                  title="Emotion Trends"
+                >
+                  <Activity size={18} />
+                </button>
+                <button
+                  onClick={() => openPanel('goals')}
+                  className="p-2 rounded-lg transition-all hover:shadow-md"
+                  style={{ color: 'var(--text-secondary)', background: 'var(--bg-paper)' }}
+                  title="Goals & Challenges"
+                >
+                  <Target size={18} />
+                </button>
+                <button
+                  onClick={() => openPanel('prompts')}
+                  className="p-2 rounded-lg transition-all hover:shadow-md"
+                  style={{ color: 'var(--text-secondary)', background: 'var(--bg-paper)' }}
+                  title="Writing Prompts"
+                >
+                  <Lightbulb size={18} />
+                </button>
+                <button
+                  onClick={() => openPanel('settings')}
+                  className="p-2 rounded-lg transition-all hover:shadow-md"
+                  style={{ color: 'var(--text-secondary)', background: 'var(--bg-paper)' }}
+                  title="Settings"
+                >
+                  <Settings size={18} />
+                </button>
 
-              {/* User section */}
-              <div className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full shadow-sm ml-2" style={{ background: 'var(--bg-paper)', border: '1px solid var(--border-light)' }}>
-                <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-sm font-medium shadow-inner" style={{ background: 'linear-gradient(135deg, var(--app-accent) 0%, var(--app-accent-dark) 100%)' }}>
-                  {user?.name?.charAt(0).toUpperCase()}
+                {/* User section */}
+                <div className="flex items-center gap-2 px-4 py-2 rounded-full shadow-sm ml-2" style={{ background: 'var(--bg-paper)', border: '1px solid var(--border-light)' }}>
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-sm font-medium shadow-inner" style={{ background: 'linear-gradient(135deg, var(--app-accent) 0%, var(--app-accent-dark) 100%)' }}>
+                    {user?.name?.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{user?.name}</span>
                 </div>
-                <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{user?.name}</span>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg transition-all hover:shadow-md"
+                  style={{ color: 'var(--text-secondary)', background: 'var(--bg-paper)' }}
+                  title="Logout"
+                >
+                  <LogOut size={18} />
+                  <span className="text-sm">Logout</span>
+                </button>
               </div>
+
+              {/* Mobile menu button */}
               <button
-                onClick={handleLogout}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg transition-all hover:shadow-md"
+                onClick={() => setShowMobileMenu(!showMobileMenu)}
+                className="md:hidden p-2 rounded-lg transition-all hover:shadow-md"
                 style={{ color: 'var(--text-secondary)', background: 'var(--bg-paper)' }}
+                title="Menu"
               >
-                <LogOut size={18} />
-                <span className="hidden sm:inline text-sm">Logout</span>
+                <Menu size={20} />
               </button>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-8">
+      {/* Mobile Menu Drawer */}
+      {showMobileMenu && (
+        <div className="md:hidden fixed inset-0 z-50 bg-black bg-opacity-50" onClick={() => setShowMobileMenu(false)}>
+          <div
+            className="absolute right-0 top-0 h-full w-full max-w-xs shadow-2xl overflow-y-auto animate-slide-in-right"
+            style={{ background: 'var(--bg-paper)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Menu Header */}
+            <div className="sticky top-0 p-4 border-b flex items-center justify-between" style={{ background: 'var(--bg-paper)', borderColor: 'var(--border-light)' }}>
+              <h3 className="font-serif text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Menu</h3>
+              <button
+                onClick={() => setShowMobileMenu(false)}
+                className="p-2 rounded-lg hover:bg-gray-100"
+                style={{ color: 'var(--text-muted)' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* User Info */}
+            <div className="p-4 border-b" style={{ borderColor: 'var(--border-light)' }}>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center text-white text-lg font-medium shadow-lg" style={{ background: 'linear-gradient(135deg, var(--app-accent) 0%, var(--app-accent-dark) 100%)' }}>
+                  {user?.name?.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{user?.name}</p>
+                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{user?.email}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Menu Items */}
+            <div className="p-2">
+              <button
+                onClick={() => {
+                  openPanel('search');
+                  setShowMobileMenu(false);
+                }}
+                className="w-full flex items-center gap-3 p-3 rounded-lg transition-all hover:shadow-sm mb-1"
+                style={{ color: 'var(--text-primary)', background: 'transparent' }}
+              >
+                <Search size={20} style={{ color: 'var(--app-accent)' }} />
+                <span className="font-serif">Search</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  openPanel('heatmap');
+                  setShowMobileMenu(false);
+                }}
+                className="w-full flex items-center gap-3 p-3 rounded-lg transition-all hover:shadow-sm mb-1"
+                style={{ color: 'var(--text-primary)', background: 'transparent' }}
+              >
+                <Flame size={20} style={{ color: 'var(--app-accent)' }} />
+                <span className="font-serif">Mood Heatmap</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  openPanel('timeline');
+                  setShowMobileMenu(false);
+                }}
+                className="w-full flex items-center gap-3 p-3 rounded-lg transition-all hover:shadow-sm mb-1"
+                style={{ color: 'var(--text-primary)', background: 'transparent' }}
+              >
+                <Clock size={20} style={{ color: 'var(--app-accent)' }} />
+                <span className="font-serif">Timeline</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  openPanel('stats');
+                  setShowMobileMenu(false);
+                }}
+                className="w-full flex items-center gap-3 p-3 rounded-lg transition-all hover:shadow-sm mb-1"
+                style={{ color: 'var(--text-primary)', background: 'transparent' }}
+              >
+                <TrendingUp size={20} style={{ color: 'var(--app-accent)' }} />
+                <span className="font-serif">Stats</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  openPanel('monthly-summary');
+                  setShowMobileMenu(false);
+                }}
+                className="w-full flex items-center gap-3 p-3 rounded-lg transition-all hover:shadow-sm mb-1"
+                style={{ color: 'var(--text-primary)', background: 'transparent' }}
+              >
+                <Calendar size={20} style={{ color: 'var(--app-accent)' }} />
+                <span className="font-serif">Monthly Summary</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  openPanel('emotion-trends');
+                  setShowMobileMenu(false);
+                }}
+                className="w-full flex items-center gap-3 p-3 rounded-lg transition-all hover:shadow-sm mb-1"
+                style={{ color: 'var(--text-primary)', background: 'transparent' }}
+              >
+                <Activity size={20} style={{ color: 'var(--app-accent)' }} />
+                <span className="font-serif">Emotion Trends</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  openPanel('goals');
+                  setShowMobileMenu(false);
+                }}
+                className="w-full flex items-center gap-3 p-3 rounded-lg transition-all hover:shadow-sm mb-1"
+                style={{ color: 'var(--text-primary)', background: 'transparent' }}
+              >
+                <Target size={20} style={{ color: 'var(--app-accent)' }} />
+                <span className="font-serif">Goals & Challenges</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  openPanel('prompts');
+                  setShowMobileMenu(false);
+                }}
+                className="w-full flex items-center gap-3 p-3 rounded-lg transition-all hover:shadow-sm mb-1"
+                style={{ color: 'var(--text-primary)', background: 'transparent' }}
+              >
+                <Lightbulb size={20} style={{ color: 'var(--app-accent)' }} />
+                <span className="font-serif">Writing Prompts</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  openPanel('settings');
+                  setShowMobileMenu(false);
+                }}
+                className="w-full flex items-center gap-3 p-3 rounded-lg transition-all hover:shadow-sm mb-1"
+                style={{ color: 'var(--text-primary)', background: 'transparent' }}
+              >
+                <Settings size={20} style={{ color: 'var(--app-accent)' }} />
+                <span className="font-serif">Settings</span>
+              </button>
+
+              <div className="my-2 border-t" style={{ borderColor: 'var(--border-light)' }}></div>
+
+              <button
+                onClick={() => {
+                  handleLogout();
+                  setShowMobileMenu(false);
+                }}
+                className="w-full flex items-center gap-3 p-3 rounded-lg transition-all hover:shadow-sm"
+                style={{ color: '#ef4444', background: 'transparent' }}
+              >
+                <LogOut size={20} />
+                <span className="font-serif">Logout</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Full-Screen Panels */}
+      {activePanel && (
+        <div className="lg:hidden fixed inset-0 z-50 bg-black bg-opacity-50" onClick={closePanel}>
+          <div
+            className="absolute inset-0 overflow-y-auto animate-fade-in"
+            style={{ background: 'var(--bg-cream)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="min-h-full p-4">
+              {activePanel === 'stats' && <StatsPanel onClose={closePanel} />}
+              {activePanel === 'settings' && <SettingsPanel onClose={closePanel} />}
+              {activePanel === 'search' && <AdvancedSearchPanel onClose={closePanel} onSelectEntry={handleSelectEntry} />}
+              {activePanel === 'monthly-summary' && <MonthlySummaryPanel onClose={closePanel} />}
+              {activePanel === 'emotion-trends' && <EmotionTrendsPanel onClose={closePanel} />}
+              {activePanel === 'goals' && <GoalsPanel onClose={closePanel} />}
+              {activePanel === 'onthisday' && <OnThisDayPanel onClose={closePanel} onSelectEntry={handleSelectEntry} />}
+              {activePanel === 'prompts' && <PromptsPanel onClose={closePanel} onSelectPrompt={handleSelectPrompt} />}
+              {activePanel === 'summary' && <WeeklySummaryPanel onClose={closePanel} onSelectEntry={handleSelectEntry} />}
+              {activePanel === 'heatmap' && <MoodHeatmap onClose={closePanel} />}
+              {activePanel === 'timeline' && <TimelineView onClose={closePanel} onSelectEntry={handleSelectEntry} />}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Full-Screen New Entry Form */}
+      {showWriting && !activePanel && (
+        <div className="lg:hidden fixed inset-0 z-50 overflow-y-auto" style={{ background: 'var(--bg-cream)' }}>
+          <div className="min-h-screen p-4">
+            <div className="rounded-lg p-4 shadow-lg" style={{ background: 'var(--bg-paper)' }}>
+              <form onSubmit={handleSaveEntry}>
+                {/* Mobile Header with Close Button */}
+                <div className="flex items-center justify-between mb-4 pb-3 border-b" style={{ borderColor: 'var(--border-light)' }}>
+                  <h2 className="font-serif text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>New Entry</h2>
+                  <button
+                    type="button"
+                    onClick={handleCancelWriting}
+                    className="p-2 rounded-lg transition-colors"
+                    style={{ color: 'var(--text-muted)' }}
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
+                {/* Date */}
+                <div className="text-center mb-4">
+                  <p className="font-serif text-sm" style={{ color: 'var(--text-secondary)' }}>
+                    {new Date().toLocaleDateString('en-US', {
+                      weekday: 'long',
+                      month: 'long',
+                      day: 'numeric',
+                      year: 'numeric'
+                    })}
+                  </p>
+                </div>
+
+                {/* Voice & Location */}
+                <div className="flex items-center gap-2 mb-4">
+                  <VoiceRecorder onTranscript={handleVoiceTranscript} disabled={loading} />
+                  <LocationPicker onLocationUpdate={setEntryLocation} />
+                </div>
+
+                {/* Journal Content */}
+                <div className="mb-4">
+                  <textarea
+                    value={journalContent}
+                    onChange={(e) => setJournalContent(e.target.value)}
+                    placeholder="Dear Memora, today I want to share..."
+                    rows={10}
+                    className="w-full bg-transparent border-none outline-none resize-none lined-paper handwritten text-sm"
+                    style={{ color: 'var(--text-ink)' }}
+                    autoFocus
+                  />
+                </div>
+
+                {/* Mood Selection */}
+                <div className="mb-4">
+                  <p className="text-xs font-serif font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>How are you feeling?</p>
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(moodConfig).slice(0, 8).map(([key, config]) => {
+                      const IconComponent = config.icon;
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => setFeeling(key)}
+                          className="px-3 py-2 rounded-lg text-xs transition-all flex items-center gap-1 min-h-[40px]"
+                          style={{
+                            background: feeling === key ? 'var(--app-accent)' : 'var(--bg-parchment)',
+                            color: feeling === key ? 'white' : 'var(--text-secondary)',
+                            boxShadow: feeling === key ? '0 2px 8px rgba(63, 91, 54, 0.3)' : 'none',
+                            border: feeling === key ? 'none' : '1px solid var(--border-light)'
+                          }}
+                        >
+                          <IconComponent size={14} />
+                          <span className="text-xs">{config.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Tags */}
+                {customTags.length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-xs font-serif font-medium mb-2 flex items-center gap-1" style={{ color: 'var(--text-secondary)' }}>
+                      <Tag size={12} />
+                      Tags (optional)
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {customTags.map((tag) => (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => {
+                            if (entryTags.includes(tag)) {
+                              setEntryTags(entryTags.filter(t => t !== tag));
+                            } else {
+                              setEntryTags([...entryTags, tag]);
+                            }
+                          }}
+                          className="px-2 py-1 rounded-full text-xs transition-all"
+                          style={{
+                            background: entryTags.includes(tag) ? 'var(--app-accent)' : 'var(--bg-parchment)',
+                            color: entryTags.includes(tag) ? 'white' : 'var(--text-secondary)',
+                            border: '1px solid var(--border-light)'
+                          }}
+                        >
+                          {tag}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex items-center justify-between pt-4 border-t" style={{ borderColor: 'var(--border-light)' }}>
+                  <button
+                    type="button"
+                    onClick={handleCancelWriting}
+                    className="px-4 py-2 rounded-lg transition-colors font-serif text-sm"
+                    style={{ color: 'var(--text-muted)' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading || !journalContent.trim()}
+                    className="btn-accent text-white px-5 py-2 rounded-lg font-medium shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Feather size={16} />
+                        Save
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Full-Screen Conversation View */}
+      {selectedEntry && !activePanel && !showWriting && (
+        <div className="lg:hidden fixed inset-0 z-50 overflow-y-auto" style={{ background: 'var(--bg-cream)' }}>
+          <div className="min-h-screen p-4">
+            <div className="rounded-lg p-4 shadow-lg" style={{ background: 'var(--bg-paper)' }}>
+              {/* Mobile Header with Back Button */}
+              <div className="flex items-center justify-between mb-4 pb-3 border-b" style={{ borderColor: 'var(--border-light)' }}>
+                <button
+                  onClick={() => setSelectedEntry(null)}
+                  className="p-2 rounded-lg transition-colors flex items-center gap-2"
+                  style={{ color: 'var(--text-muted)' }}
+                >
+                  <ArrowLeft size={20} />
+                  <span className="text-sm">Back</span>
+                </button>
+
+                {/* Action buttons */}
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={handleTogglePin}
+                    className="p-2 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                    style={{ color: selectedEntry.isPinned ? 'var(--gold-accent)' : 'var(--text-muted)' }}
+                  >
+                    <Pin size={18} fill={selectedEntry.isPinned ? 'var(--gold-accent)' : 'none'} />
+                  </button>
+                  <button
+                    onClick={handleToggleFavorite}
+                    className="p-2 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                    style={{ color: selectedEntry.isFavorite ? 'var(--gold-accent)' : 'var(--text-muted)' }}
+                  >
+                    <Star size={18} fill={selectedEntry.isFavorite ? 'var(--gold-accent)' : 'none'} />
+                  </button>
+                  <button
+                    onClick={startEditing}
+                    className="p-2 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                    style={{ color: 'var(--text-muted)' }}
+                  >
+                    <Edit3 size={18} />
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (confirm('Delete this entry?')) {
+                        handleDeleteEntry(selectedEntry._id);
+                        setSelectedEntry(null);
+                      }
+                    }}
+                    className="p-2 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                    style={{ color: 'var(--text-muted)' }}
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Entry Header */}
+              <div className="text-center mb-4">
+                <div className="chapter-divider mb-2">
+                  {getMoodIcon(selectedEntry.mood)}
+                </div>
+                <h2 className="font-serif text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>{selectedEntry.title}</h2>
+                <div className="flex items-center justify-center gap-1 text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                  <Clock size={12} />
+                  {formatDate(selectedEntry.createdAt)}
+                </div>
+              </div>
+
+              {/* Tags */}
+              {selectedEntry.tags?.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {selectedEntry.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="px-2 py-0.5 rounded-full text-xs"
+                      style={{ background: 'var(--app-accent-light)', color: 'var(--app-accent-dark)' }}
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Entry Content */}
+              {isEditing ? (
+                <div className="space-y-4 mb-4">
+                  <textarea
+                    value={editContent}
+                    onChange={(e) => setEditContent(e.target.value)}
+                    rows={8}
+                    className="w-full bg-transparent border-none outline-none resize-none lined-paper handwritten text-sm"
+                    style={{ color: 'var(--text-ink)', background: 'var(--bg-parchment)', padding: '1rem', borderRadius: '0.5rem' }}
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(moodConfig).slice(0, 8).map(([key, config]) => {
+                      const IconComponent = config.icon;
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => setEditMood(key)}
+                          className="px-3 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1 min-h-[40px]"
+                          style={{
+                            background: editMood === key ? 'var(--app-accent)' : 'var(--bg-parchment)',
+                            color: editMood === key ? 'white' : 'var(--text-secondary)',
+                            border: '1px solid var(--border-light)'
+                          }}
+                        >
+                          <IconComponent size={14} />
+                          {config.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleSaveEdit}
+                      className="px-4 py-2 rounded-lg flex items-center gap-2 flex-1"
+                      style={{ background: 'var(--app-accent)', color: 'white' }}
+                    >
+                      <Check size={16} />
+                      Save
+                    </button>
+                    <button
+                      onClick={cancelEditing}
+                      className="px-4 py-2 rounded-lg"
+                      style={{ color: 'var(--text-muted)', background: 'var(--bg-parchment)' }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div
+                    className="text-base leading-relaxed handwritten whitespace-pre-wrap mb-4"
+                    style={{ color: 'var(--text-ink)' }}
+                  >
+                    {selectedEntry.content}
+                  </div>
+
+                  {/* Location */}
+                  {selectedEntry.location?.name && (
+                    <div className="flex items-center gap-2 text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
+                      <MapPin size={14} />
+                      <span>{selectedEntry.location.name}</span>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* AI Response */}
+              {selectedEntry.aiResponse && !isEditing && (
+                <>
+                  <div className="chapter-divider my-4">
+                    <BookOpen size={14} style={{ color: 'var(--gold-accent)' }} />
+                  </div>
+                  <div className="mb-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, var(--app-accent) 0%, var(--app-accent-dark) 100%)' }}>
+                        <Bot size={14} className="text-white" />
+                      </div>
+                      <span className="font-serif text-xs font-medium italic" style={{ color: 'var(--app-accent-dark)' }}>Memora responds...</span>
+                    </div>
+                    <div className="pl-8 border-l-2" style={{ borderColor: 'var(--app-accent-light)' }}>
+                      <p className="leading-relaxed text-sm" style={{ color: 'var(--text-primary)', fontFamily: "'EB Garamond', Georgia, serif" }}>
+                        {selectedEntry.aiResponse}
+                      </p>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Conversation Thread */}
+              {!isEditing && selectedEntry.conversation && selectedEntry.conversation.map((msg, index) => (
+                <div key={index} className="mb-4">
+                  {msg.role === 'assistant' ? (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, var(--app-accent) 0%, var(--app-accent-dark) 100%)' }}>
+                          <Bot size={14} className="text-white" />
+                        </div>
+                        <span className="font-serif text-xs italic" style={{ color: 'var(--text-muted)' }}>Memora</span>
+                      </div>
+                      <div className="pl-8 border-l-2" style={{ borderColor: 'var(--app-accent-light)' }}>
+                        <p className="leading-relaxed text-sm" style={{ color: 'var(--text-primary)', fontFamily: "'EB Garamond', Georgia, serif" }}>
+                          {msg.content}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2 justify-end">
+                        <span className="font-serif text-xs italic" style={{ color: 'var(--text-muted)' }}>{user?.name}</span>
+                        <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-medium" style={{ background: 'var(--leather-brown)' }}>
+                          {user?.name?.charAt(0).toUpperCase()}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="leading-relaxed handwritten inline-block text-left px-3 py-2 rounded-lg text-sm" style={{ color: 'var(--text-ink)', background: 'var(--bg-parchment)' }}>
+                          {msg.content}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {/* Reply Input */}
+              {!isEditing && (
+                <div className="mt-6 pt-4 border-t" style={{ borderColor: 'var(--border-light)' }}>
+                  <form onSubmit={handleReply} className="flex gap-2 items-end">
+                    <div className="flex-1 rounded-lg p-3" style={{ background: 'var(--bg-parchment)', border: '1px solid var(--border-light)' }}>
+                      <textarea
+                        ref={replyInputRef}
+                        value={replyMessage}
+                        onChange={(e) => setReplyMessage(e.target.value)}
+                        placeholder="Write your thoughts..."
+                        rows={2}
+                        className="w-full bg-transparent border-none outline-none resize-none handwritten text-sm"
+                        style={{ color: 'var(--text-ink)' }}
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={replying || !replyMessage.trim()}
+                      className="btn-accent text-white p-3 rounded-lg shadow-md disabled:opacity-50 min-w-[48px] min-h-[48px] flex items-center justify-center"
+                    >
+                      {replying ? (
+                        <Loader2 size={18} className="animate-spin" />
+                      ) : (
+                        <Send size={18} />
+                      )}
+                    </button>
+                  </form>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <main className="max-w-6xl mx-auto px-2 sm:px-4 py-4 sm:py-8">
         {/* Book container with spine */}
-        <div className="flex">
+        <div className="flex flex-col lg:flex-row">
           {/* Book spine */}
           <div className="hidden lg:block w-8 book-spine rounded-l-lg min-h-[70vh] flex-shrink-0">
             {/* Gold embossed text on spine */}
@@ -784,9 +1371,9 @@ const Journal = () => {
           </div>
 
           {/* Main book content */}
-          <div className="flex-1 grid lg:grid-cols-3 gap-0 lg:gap-0">
+          <div className="flex-1 flex flex-col lg:grid lg:grid-cols-3 gap-0 lg:gap-0 w-full overflow-hidden">
             {/* Left page - Past entries (like table of contents) */}
-            <div className="lg:col-span-1 book-page rounded-l-none lg:rounded-l-none rounded-t-lg lg:rounded-t-none p-6" style={{ background: 'var(--bg-parchment)' }}>
+            <div className="lg:col-span-1 book-page rounded-lg lg:rounded-l-none lg:rounded-t-none p-4 sm:p-6 w-full" style={{ background: 'var(--bg-parchment)' }}>
               {/* Gold bookmark ribbon */}
               <div className="bookmark-ribbon right-4 hidden lg:block"></div>
 
@@ -798,7 +1385,7 @@ const Journal = () => {
                 <button
                   onClick={() => handleShowWriting()}
                   disabled={isPageTurning}
-                  className="btn-accent text-white px-4 py-2 rounded-lg text-sm shadow-md flex items-center gap-2 disabled:opacity-70"
+                  className="btn-accent text-white px-3 py-2 sm:px-4 sm:py-2 rounded-lg text-sm shadow-md flex items-center gap-2 disabled:opacity-70"
                 >
                   <Plus size={16} />
                   New Entry
@@ -977,7 +1564,7 @@ const Journal = () => {
                     </button>
                   </div>
                 ) : (
-                  <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-2">
+                  <div className="space-y-3 max-h-[60vh] md:max-h-[50vh] overflow-y-auto pr-2">
                     {filteredEntries.map((entry, index) => (
                     <button
                       key={entry._id}
@@ -1053,24 +1640,26 @@ const Journal = () => {
             </div>
 
             {/* Right page - Main content */}
-            <div className="lg:col-span-2 rounded-r-lg lg:border-l relative page-corner page-3d" style={{ background: 'var(--bg-paper)', borderColor: 'var(--border-light)' }}>
-              <div className={`p-8 relative z-10 ${pageAnimation}`} style={{ transformStyle: 'preserve-3d' }}>
-                {/* Feature Panels */}
-                {activePanel === 'stats' && <StatsPanel onClose={closePanel} />}
-                {activePanel === 'settings' && <SettingsPanel onClose={closePanel} />}
-                {activePanel === 'search' && <AdvancedSearchPanel onClose={closePanel} onSelectEntry={handleSelectEntry} />}
-                {activePanel === 'monthly-summary' && <MonthlySummaryPanel onClose={closePanel} />}
-                {activePanel === 'emotion-trends' && <EmotionTrendsPanel onClose={closePanel} />}
-                {activePanel === 'goals' && <GoalsPanel onClose={closePanel} />}
-                {activePanel === 'onthisday' && <OnThisDayPanel onClose={closePanel} onSelectEntry={handleSelectEntry} />}
-                {activePanel === 'prompts' && <PromptsPanel onClose={closePanel} onSelectPrompt={handleSelectPrompt} />}
-                {activePanel === 'summary' && <WeeklySummaryPanel onClose={closePanel} onSelectEntry={handleSelectEntry} />}
-                {activePanel === 'heatmap' && <MoodHeatmap onClose={closePanel} />}
-                {activePanel === 'timeline' && <TimelineView onClose={closePanel} onSelectEntry={handleSelectEntry} />}
+            <div className="lg:col-span-2 rounded-lg lg:rounded-r-lg lg:rounded-l-none lg:border-l relative page-corner page-3d mt-4 lg:mt-0 w-full" style={{ background: 'var(--bg-paper)', borderColor: 'var(--border-light)' }}>
+              <div className={`p-4 sm:p-8 relative z-10 ${pageAnimation}`} style={{ transformStyle: 'preserve-3d' }}>
+                {/* Feature Panels - Desktop Only */}
+                <div className="hidden lg:block">
+                  {activePanel === 'stats' && <StatsPanel onClose={closePanel} />}
+                  {activePanel === 'settings' && <SettingsPanel onClose={closePanel} />}
+                  {activePanel === 'search' && <AdvancedSearchPanel onClose={closePanel} onSelectEntry={handleSelectEntry} />}
+                  {activePanel === 'monthly-summary' && <MonthlySummaryPanel onClose={closePanel} />}
+                  {activePanel === 'emotion-trends' && <EmotionTrendsPanel onClose={closePanel} />}
+                  {activePanel === 'goals' && <GoalsPanel onClose={closePanel} />}
+                  {activePanel === 'onthisday' && <OnThisDayPanel onClose={closePanel} onSelectEntry={handleSelectEntry} />}
+                  {activePanel === 'prompts' && <PromptsPanel onClose={closePanel} onSelectPrompt={handleSelectPrompt} />}
+                  {activePanel === 'summary' && <WeeklySummaryPanel onClose={closePanel} onSelectEntry={handleSelectEntry} />}
+                  {activePanel === 'heatmap' && <MoodHeatmap onClose={closePanel} />}
+                  {activePanel === 'timeline' && <TimelineView onClose={closePanel} onSelectEntry={handleSelectEntry} />}
+                </div>
 
                 {!activePanel && showWriting ? (
-                  /* Writing new entry */
-                  <div className="animate-fade-in-up">
+                  /* Writing new entry - Desktop only, Mobile uses full-screen overlay */
+                  <div className="hidden lg:block animate-fade-in-up">
                     <form onSubmit={handleSaveEntry}>
                       {/* Date header with ornate styling */}
                       <div className="text-center mb-8">
@@ -1201,8 +1790,8 @@ const Journal = () => {
                     </form>
                   </div>
                 ) : !activePanel && selectedEntry ? (
-                  /* Viewing an entry with conversation */
-                  <div {...swipeHandlers} className="space-y-6 animate-fade-in-up">
+                  /* Viewing an entry with conversation - Desktop only, Mobile uses full-screen overlay */
+                  <div {...swipeHandlers} className="hidden lg:block space-y-6 animate-fade-in-up">
                     {/* Your journal entry */}
                     <div className="relative">
                       {/* Entry header */}
@@ -1219,10 +1808,10 @@ const Journal = () => {
                         </div>
 
                         {/* Action buttons */}
-                        <div className="flex items-center gap-1 absolute right-0 top-0">
+                        <div className="flex items-center gap-0.5 sm:gap-1 absolute right-0 top-0">
                           <button
                             onClick={handleTogglePin}
-                            className="p-2 rounded-lg transition-colors hover:bg-yellow-50"
+                            className="p-2.5 sm:p-2 rounded-lg transition-colors hover:bg-yellow-50 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center"
                             style={{ color: selectedEntry.isPinned ? 'var(--gold-accent)' : 'var(--text-muted)' }}
                             title={selectedEntry.isPinned ? 'Unpin entry' : 'Pin entry'}
                           >
@@ -1230,7 +1819,7 @@ const Journal = () => {
                           </button>
                           <button
                             onClick={handleToggleFavorite}
-                            className="p-2 rounded-lg transition-colors hover:bg-yellow-50"
+                            className="p-2.5 sm:p-2 rounded-lg transition-colors hover:bg-yellow-50 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center"
                             style={{ color: selectedEntry.isFavorite ? 'var(--gold-accent)' : 'var(--text-muted)' }}
                             title={selectedEntry.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
                           >
@@ -1238,7 +1827,7 @@ const Journal = () => {
                           </button>
                           <button
                             onClick={startEditing}
-                            className="p-2 rounded-lg transition-colors hover:bg-blue-50"
+                            className="p-2.5 sm:p-2 rounded-lg transition-colors hover:bg-blue-50 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center"
                             style={{ color: 'var(--text-muted)' }}
                             title="Edit entry"
                           >
@@ -1250,7 +1839,7 @@ const Journal = () => {
                                 handleDeleteEntry(selectedEntry._id);
                               }
                             }}
-                            className="p-2 rounded-lg transition-colors hover:bg-red-50 hover:text-red-500"
+                            className="p-2.5 sm:p-2 rounded-lg transition-colors hover:bg-red-50 hover:text-red-500 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center"
                             style={{ color: 'var(--text-muted)' }}
                             title="Delete entry"
                           >
@@ -1482,7 +2071,7 @@ const Journal = () => {
 
                     {/* Reply input - styled like writing in the margin */}
                     {!isEditing && (
-                      <div className="sticky bottom-4 mt-8">
+                      <div className="sticky bottom-2 sm:bottom-4 mt-4 sm:mt-8">
                         <div className="chapter-divider mb-4">
                           <Feather size={12} style={{ color: 'var(--gold-accent)' }} />
                         </div>

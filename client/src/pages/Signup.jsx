@@ -54,7 +54,7 @@ const Signup = () => {
           {/* Book spine effect */}
           <div className="absolute left-0 top-4 bottom-4 w-3 book-spine rounded-l-md hidden sm:block"></div>
 
-          <div className="journal-entry rounded-2xl p-8 relative sm:ml-3" style={{ background: 'var(--bg-paper)' }}>
+          <div className="journal-entry rounded-2xl p-6 sm:p-8 relative sm:ml-3" style={{ background: 'var(--bg-paper)' }}>
             {/* Gold bookmark ribbon */}
             <div className="absolute -top-2 right-8 w-5 h-16 rounded-b-sm" style={{ background: 'linear-gradient(180deg, var(--gold-accent) 0%, #B8994F 100%)' }}>
               <div className="absolute bottom-0 left-0 right-0 h-4" style={{ background: 'inherit', clipPath: 'polygon(0 0, 50% 100%, 100% 0)' }}></div>
@@ -70,7 +70,7 @@ const Signup = () => {
                 <Star size={10} style={{ color: 'var(--gold-accent)' }} />
               </div>
 
-              <h1 className="text-3xl font-serif font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Begin Your Story</h1>
+              <h1 className="text-2xl sm:text-3xl font-serif font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Begin Your Story</h1>
               <p className="font-serif italic" style={{ color: 'var(--text-secondary)' }}>Create your personal Memora</p>
             </div>
 

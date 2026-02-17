@@ -159,7 +159,7 @@ const MoodHeatmap = ({ onClose }) => {
       ) : (
         <>
           {/* Stats summary */}
-          <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
             <div className="p-3 text-center rounded-lg" style={{ background: 'var(--bg-parchment)' }}>
               <div className="font-serif text-2xl font-bold" style={{ color: 'var(--app-accent)' }}>
                 {stats.totalEntries || 0}
@@ -181,7 +181,7 @@ const MoodHeatmap = ({ onClose }) => {
           </div>
 
           {/* Heatmap */}
-          <div className="pb-4 overflow-x-auto">
+          <div className="pb-4 overflow-x-auto scrollbar-thin">
             {/* Month labels */}
             <div className="flex mb-1 ml-8">
               {monthLabels.map(({ month, weekIndex }, i) => (
@@ -224,7 +224,7 @@ const MoodHeatmap = ({ onClose }) => {
                       return (
                         <div
                           key={dayIndex}
-                          className={`w-3 h-3 rounded-sm transition-all ${isToday ? 'ring-1 ring-offset-1' : ''}`}
+                          className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm transition-all ${isToday ? 'ring-1 ring-offset-1' : ''}`}
                           style={{
                             background: dayData
                               ? moodColors[dayData.mood] || 'var(--app-accent)'
