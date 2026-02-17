@@ -6,7 +6,7 @@ dotenv.config();
 // Create transporter for sending emails
 const createTransporter = () => {
   // Using Gmail as example - users can configure their own SMTP
-  return nodemailer.createTransporter({
+  return nodemailer.createTransport({
     service: process.env.EMAIL_SERVICE || 'gmail',
     auth: {
       user: process.env.EMAIL_USER,
@@ -331,3 +331,87 @@ export const sendPasswordResetEmail = async (userEmail, resetUrl) => {
 };
 
 export default { sendReminderEmail, sendStreakProtectionEmail, sendPasswordResetEmail };
+
+// Send test email
+export const sendTestEmail = async (userEmail, userName) => {
+  try {
+    const transporter = createTransporter();
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: userEmail,
+      subject: '✅ Memora Email Test',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body {
+              font-family: 'Georgia', serif;
+              background-color: #F5F1E8;
+              padding: 20px;
+            }
+            .container {
+              max-width: 600px;
+              margin: 0 auto;
+              background: white;
+              border-radius: 12px;
+              padding: 40px;
+              box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            }
+            .header {
+              text-align: center;
+              color: #3F5B36;
+              margin-bottom: 30px;
+            }
+            .header h1 {
+              font-size: 32px;
+              margin: 0;
+              color: #6F9463;
+            }
+            .content {
+              color: #2C3E2A;
+              line-height: 1.8;
+              font-size: 16px;
+            }
+            .success-badge {
+              text-align: center;
+              font-size: 64px;
+              margin: 20px 0;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>✨ Memora</h1>
+              <p style="font-style: italic; color: #5A6B57;">Email Configuration Test</p>
+            </div>
+            <div class="success-badge">✅</div>
+            <div class="content">
+              <p>Hello ${userName || 'there'},</p>
+              <p><strong>Great news!</strong> Your email configuration is working perfectly.</p>
+              <p>This is a test email to verify that Memora can successfully send emails using your configured SMTP settings.</p>
+              <p style="margin-top: 30px; color: #5A6B57;">
+                <strong>Configuration Details:</strong><br>
+                Email Service: ${process.env.EMAIL_SERVICE || 'gmail'}<br>
+                Sender: ${process.env.EMAIL_USER}
+              </p>
+              <p style="margin-top: 30px; font-style: italic; color: #5A6B57;">
+                You can now receive reminder emails and other notifications from Memora!
+              </p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log(`Test email sent successfully to ${userEmail}`);
+    return true;
+  } catch (error) {
+    console.error('Error sending test email:', error);
+    throw error;
+  }
+};
