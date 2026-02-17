@@ -655,6 +655,7 @@ textarea::placeholder {
   opacity: 0.7;
 }
 
+
 /* Input with book styling */
 input.book-input {
   font-family: 'EB Garamond', Georgia, serif;
@@ -706,4 +707,30 @@ input.book-input:focus {
   bottom: -10px;
   left: 50%;
   transform: translateX(-50%) rotate(180deg);
+}
+
+/* ===== PULL TO REFRESH STYLES ===== */
+.ptr {
+  overflow: visible !important;
+}
+
+.ptr__pull-down {
+  background: transparent !important;
+}
+
+.ptr__children {
+  background: transparent !important;
+  overflow: visible !important;
+}
+
+/* Smooth swipe transitions */
+[data-swipeable] {
+  transition: transform 0.3s ease-out;
+}
+
+/* Visual feedback for swipe navigation */
+@media (max-width: 768px) {
+  .space-y-6.animate-fade-in-up {
+    touch-action: pan-y;
+  }
 }

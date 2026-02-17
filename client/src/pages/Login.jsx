@@ -118,6 +118,12 @@ const Login = () => {
                 <Feather size={12} style={{ color: 'var(--gold-accent)' }} />
               </div>
 
+              <div className="text-right mb-4">
+                <Link to="/forgot-password" className="text-sm font-serif hover:underline" style={{ color: 'var(--app-accent)' }}>
+                  Forgot password?
+                </Link>
+              </div>
+
               <button
                 type="submit"
                 disabled={loading}

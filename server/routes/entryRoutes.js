@@ -24,19 +24,28 @@ import {
   addImage,
   removeImage,
   updateAudio,
-  saveSpotifyTrack
+  saveSpotifyTrack,
+  exportEntries,
+  createBackup,
+  getMonthlySummary,
+  getEmotionTrends
 } from '../controllers/entryController.js';
 import protect from '../middleware/authMiddleware.js';
+import { entryLimiter } from '../middleware/rateLimiter.js';
 
 const router = express.Router();
 
 // Special routes (must come before /:id routes)
+router.get('/export', protect, exportEntries);
+router.get('/backup', protect, createBackup);
 router.get('/search', protect, searchEntries);
 router.get('/favorites', protect, getFavorites);
 router.get('/on-this-day', protect, getOnThisDay);
 router.get('/analytics/mood', protect, getMoodAnalytics);
+router.get('/analytics/emotion-trends', protect, getEmotionTrends);
 router.get('/stats', protect, getWritingStats);
 router.get('/summary/weekly', protect, getWeeklySummary);
+router.get('/summary/monthly', protect, getMonthlySummary);
 router.get('/prompts', protect, getDailyPrompts);
 router.get('/calendar', protect, getCalendarData);
 router.get('/heatmap', protect, getMoodHeatmap);
@@ -44,7 +53,7 @@ router.get('/timeline', protect, getTimeline);
 
 router.route('/')
   .get(protect, getEntries)
-  .post(protect, createEntry);
+  .post(protect, entryLimiter, createEntry);
 
 router.route('/:id')
   .get(protect, getEntry)

@@ -94,25 +94,9 @@ const userSchema = new mongoose.Schema({
       default: false
     }
   },
-  // Spotify integration
-  spotify: {
-    connected: {
-      type: Boolean,
-      default: false
-    },
-    accessToken: {
-      type: String,
-      default: ''
-    },
-    refreshToken: {
-      type: String,
-      default: ''
-    },
-    tokenExpiry: {
-      type: Date,
-      default: null
-    }
-  }
+  // Password reset
+  resetPasswordToken: String,
+  resetPasswordExpire: Date
 }, {
   timestamps: true
 });

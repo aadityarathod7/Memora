@@ -1,13 +1,35 @@
 import Entry from '../models/Entry.js';
 import User from '../models/User.js';
 import { generateAIResponse, generateReplyResponse } from '../services/aiService.js';
+import { updateGoalsOnEntry } from './goalController.js';
 
-// @desc    Get all entries for user
+// @desc    Get all entries for user with pagination
 // @route   GET /api/entries
 export const getEntries = async (req, res) => {
   try {
-    const entries = await Entry.find({ user: req.user._id }).sort({ createdAt: -1 });
-    res.json(entries);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    // Get total count for pagination
+    const total = await Entry.countDocuments({ user: req.user._id });
+
+    // Fetch entries with pagination
+    const entries = await Entry.find({ user: req.user._id })
+      .sort({ isPinned: -1, createdAt: -1 }) // Pinned entries first, then by date
+      .skip(skip)
+      .limit(limit)
+      .lean(); // Use lean() for better performance (returns plain JS objects)
+
+    res.json({
+      entries,
+      pagination: {
+        currentPage: page,
+        totalPages: Math.ceil(total / limit),
+        totalEntries: total,
+        hasMore: skip + entries.length < total
+      }
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -63,6 +85,9 @@ export const createEntry = async (req, res) => {
 
     // Update user's streak
     await updateStreak(req.user._id);
+
+    // Update user's goals
+    await updateGoalsOnEntry(req.user._id, entry);
 
     res.status(201).json(entry);
   } catch (error) {
@@ -215,20 +240,74 @@ export const updateTags = async (req, res) => {
 // @route   GET /api/entries/search
 export const searchEntries = async (req, res) => {
   try {
-    const { q } = req.query;
+    const { q, startDate, endDate, moods, tags, favorites, minWords, maxWords, sortBy } = req.query;
 
-    if (!q) {
-      return res.json([]);
-    }
+    // Build filter object
+    const filter = { user: req.user._id };
 
-    const entries = await Entry.find({
-      user: req.user._id,
-      $or: [
+    // Text search
+    if (q && q.trim()) {
+      filter.$or = [
         { title: { $regex: q, $options: 'i' } },
         { content: { $regex: q, $options: 'i' } },
         { tags: { $regex: q, $options: 'i' } }
-      ]
-    }).sort({ createdAt: -1 });
+      ];
+    }
+
+    // Date range filter
+    if (startDate || endDate) {
+      filter.createdAt = {};
+      if (startDate) {
+        filter.createdAt.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        filter.createdAt.$lte = end;
+      }
+    }
+
+    // Mood filter (can be multiple)
+    if (moods) {
+      const moodArray = Array.isArray(moods) ? moods : moods.split(',');
+      filter.mood = { $in: moodArray };
+    }
+
+    // Tags filter (can be multiple)
+    if (tags) {
+      const tagArray = Array.isArray(tags) ? tags : tags.split(',');
+      filter.tags = { $in: tagArray };
+    }
+
+    // Favorites filter
+    if (favorites === 'true') {
+      filter.isFavorite = true;
+    }
+
+    // Word count filter
+    if (minWords || maxWords) {
+      filter.wordCount = {};
+      if (minWords) {
+        filter.wordCount.$gte = parseInt(minWords);
+      }
+      if (maxWords) {
+        filter.wordCount.$lte = parseInt(maxWords);
+      }
+    }
+
+    // Determine sort order
+    let sort = { createdAt: -1 }; // Default: newest first
+    if (sortBy === 'oldest') {
+      sort = { createdAt: 1 };
+    } else if (sortBy === 'wordcount-high') {
+      sort = { wordCount: -1 };
+    } else if (sortBy === 'wordcount-low') {
+      sort = { wordCount: 1 };
+    } else if (sortBy === 'title') {
+      sort = { title: 1 };
+    }
+
+    const entries = await Entry.find(filter).sort(sort);
 
     res.json(entries);
   } catch (error) {
@@ -815,6 +894,372 @@ export const saveSpotifyTrack = async (req, res) => {
 
     res.json({ spotifyTrack: entry.spotifyTrack });
   } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Export entries in different formats
+// @route   GET /api/entries/export
+export const exportEntries = async (req, res) => {
+  try {
+    const { format = 'json' } = req.query;
+    const entries = await Entry.find({ user: req.user._id }).sort({ createdAt: 1 });
+    const user = await User.findById(req.user._id);
+
+    if (format === 'json') {
+      // JSON export
+      const exportData = {
+        user: {
+          name: user.name,
+          email: user.email,
+          exportedAt: new Date().toISOString()
+        },
+        entries: entries.map(entry => ({
+          title: entry.title,
+          content: entry.content,
+          mood: entry.mood,
+          tags: entry.tags,
+          isFavorite: entry.isFavorite,
+          isPinned: entry.isPinned,
+          conversation: entry.conversation,
+          wordCount: entry.wordCount,
+          location: entry.location,
+          createdAt: entry.createdAt,
+          updatedAt: entry.updatedAt
+        })),
+        stats: {
+          totalEntries: entries.length,
+          totalWords: entries.reduce((sum, e) => sum + (e.wordCount || 0), 0),
+          streak: user.streak
+        }
+      };
+
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename=memora-export-${Date.now()}.json`);
+      return res.json(exportData);
+    }
+
+    if (format === 'markdown') {
+      // Markdown export
+      let markdown = `# ${user.name}'s Journal\n\n`;
+      markdown += `**Exported:** ${new Date().toLocaleDateString()}\n`;
+      markdown += `**Total Entries:** ${entries.length}\n\n`;
+      markdown += `---\n\n`;
+
+      entries.forEach((entry, index) => {
+        markdown += `## ${entry.title}\n\n`;
+        markdown += `**Date:** ${new Date(entry.createdAt).toLocaleDateString()}\n`;
+        markdown += `**Mood:** ${entry.mood}\n`;
+        if (entry.tags && entry.tags.length > 0) {
+          markdown += `**Tags:** ${entry.tags.join(', ')}\n`;
+        }
+        markdown += `\n${entry.content}\n\n`;
+
+        if (entry.conversation && entry.conversation.length > 0) {
+          markdown += `### Conversation\n\n`;
+          entry.conversation.forEach(msg => {
+            markdown += `**${msg.role === 'user' ? user.name : 'Memora'}:** ${msg.content}\n\n`;
+          });
+        }
+        markdown += `---\n\n`;
+      });
+
+      res.setHeader('Content-Type', 'text/markdown');
+      res.setHeader('Content-Disposition', `attachment; filename=memora-export-${Date.now()}.md`);
+      return res.send(markdown);
+    }
+
+    if (format === 'csv') {
+      // CSV export
+      let csv = 'Date,Title,Mood,Content,Tags,Word Count,Favorite,Pinned\n';
+
+      entries.forEach(entry => {
+        const date = new Date(entry.createdAt).toLocaleDateString();
+        const title = `"${entry.title.replace(/"/g, '""')}"`;
+        const content = `"${entry.content.replace(/"/g, '""').replace(/\n/g, ' ')}"`;
+        const tags = `"${(entry.tags || []).join(', ')}"`;
+
+        csv += `${date},${title},${entry.mood},${content},${tags},${entry.wordCount || 0},${entry.isFavorite},${entry.isPinned}\n`;
+      });
+
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename=memora-export-${Date.now()}.csv`);
+      return res.send(csv);
+    }
+
+    res.status(400).json({ message: 'Invalid format. Use json, markdown, or csv' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Create backup (all data including user settings)
+// @route   GET /api/entries/backup
+export const createBackup = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    const entries = await Entry.find({ user: req.user._id }).sort({ createdAt: 1 });
+
+    const backup = {
+      version: '1.0',
+      timestamp: new Date().toISOString(),
+      user: {
+        name: user.name,
+        email: user.email,
+        settings: user.settings,
+        customTags: user.customTags,
+        streak: user.streak,
+        reminders: user.reminders,
+        pinLock: { enabled: user.pinLock?.enabled || false },
+        spotify: { connected: user.spotify?.connected || false }
+      },
+      entries: entries,
+      stats: {
+        totalEntries: entries.length,
+        totalWords: entries.reduce((sum, e) => sum + (e.wordCount || 0), 0),
+        firstEntry: entries[0]?.createdAt,
+        lastEntry: entries[entries.length - 1]?.createdAt
+      }
+    };
+
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename=memora-full-backup-${Date.now()}.json`);
+    res.json(backup);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Get monthly summary with AI insights
+// @route   GET /api/entries/summary/monthly
+export const getMonthlySummary = async (req, res) => {
+  try {
+    const { year, month } = req.query;
+
+    if (!year || !month) {
+      return res.status(400).json({ message: 'Year and month are required' });
+    }
+
+    // Get entries for the specified month
+    const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+    const endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59);
+
+    const entries = await Entry.find({
+      user: req.user._id,
+      createdAt: { $gte: startDate, $lte: endDate }
+    }).sort({ createdAt: 1 });
+
+    if (entries.length === 0) {
+      return res.json({
+        message: 'No entries found for this month',
+        summary: null,
+        stats: null
+      });
+    }
+
+    // Calculate mood distribution
+    const moodCounts = {};
+    entries.forEach(entry => {
+      moodCounts[entry.mood] = (moodCounts[entry.mood] || 0) + 1;
+    });
+
+    // Get top tags
+    const tagCounts = {};
+    entries.forEach(entry => {
+      entry.tags?.forEach(tag => {
+        tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+      });
+    });
+    const topTags = Object.entries(tagCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([tag, count]) => ({ tag, count }));
+
+    // Calculate writing stats
+    const totalWords = entries.reduce((sum, e) => sum + (e.wordCount || 0), 0);
+    const avgWords = Math.round(totalWords / entries.length);
+
+    // Generate AI summary
+    const entriesText = entries.map((e, i) =>
+      `Entry ${i + 1} (${e.mood}): ${e.content.substring(0, 200)}...`
+    ).join('\n\n');
+
+    const prompt = `You are Memora, an AI journal companion. Analyze this user's journal entries from ${new Date(startDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} and provide a thoughtful monthly summary.
+
+Entries (${entries.length} total):
+${entriesText}
+
+Mood distribution: ${JSON.stringify(moodCounts)}
+Top themes: ${topTags.map(t => t.tag).join(', ')}
+
+Provide a warm, insightful summary (2-3 paragraphs) that:
+1. Highlights key themes and emotional patterns
+2. Acknowledges growth and challenges
+3. Offers gentle encouragement and reflection
+4. Feels personal and empathetic
+
+Keep it conversational and supportive.`;
+
+    const aiSummary = await generateAIResponse(prompt);
+
+    const stats = {
+      totalEntries: entries.length,
+      totalWords,
+      avgWords,
+      moodDistribution: moodCounts,
+      topTags,
+      longestStreak: calculateMonthStreak(entries),
+      favoriteCount: entries.filter(e => e.isFavorite).length
+    };
+
+    res.json({
+      summary: aiSummary,
+      stats,
+      period: {
+        month: parseInt(month),
+        year: parseInt(year),
+        monthName: new Date(startDate).toLocaleDateString('en-US', { month: 'long' })
+      }
+    });
+  } catch (error) {
+    console.error('Monthly summary error:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Helper function to calculate streak within a month
+const calculateMonthStreak = (entries) => {
+  if (entries.length === 0) return 0;
+
+  const dates = entries.map(e => new Date(e.createdAt).toDateString());
+  const uniqueDates = [...new Set(dates)];
+
+  let currentStreak = 1;
+  let maxStreak = 1;
+
+  for (let i = 1; i < uniqueDates.length; i++) {
+    const prev = new Date(uniqueDates[i - 1]);
+    const curr = new Date(uniqueDates[i]);
+    const diffDays = Math.floor((curr - prev) / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 1) {
+      currentStreak++;
+      maxStreak = Math.max(maxStreak, currentStreak);
+    } else {
+      currentStreak = 1;
+    }
+  }
+
+  return maxStreak;
+};
+
+// @desc    Get emotion trends over time
+// @route   GET /api/entries/analytics/emotion-trends
+export const getEmotionTrends = async (req, res) => {
+  try {
+    const { period = '30', startDate, endDate } = req.query;
+
+    let dateFilter = {};
+
+    if (startDate && endDate) {
+      dateFilter = {
+        createdAt: {
+          $gte: new Date(startDate),
+          $lte: new Date(endDate)
+        }
+      };
+    } else {
+      // Default to last N days
+      const daysAgo = new Date();
+      daysAgo.setDate(daysAgo.getDate() - parseInt(period));
+      dateFilter = { createdAt: { $gte: daysAgo } };
+    }
+
+    const entries = await Entry.find({
+      user: req.user._id,
+      ...dateFilter
+    }).sort({ createdAt: 1 });
+
+    if (entries.length === 0) {
+      return res.json({
+        trends: [],
+        insights: {
+          dominantMood: null,
+          moodVariability: 0,
+          positiveRatio: 0
+        }
+      });
+    }
+
+    // Group by date
+    const dailyMoods = {};
+    entries.forEach(entry => {
+      const date = new Date(entry.createdAt).toISOString().split('T')[0];
+      if (!dailyMoods[date]) {
+        dailyMoods[date] = [];
+      }
+      dailyMoods[date].push(entry.mood);
+    });
+
+    // Calculate mood scores (positive to negative scale)
+    const moodScores = {
+      excited: 5,
+      happy: 4,
+      grateful: 4,
+      hopeful: 3,
+      calm: 3,
+      neutral: 0,
+      tired: -2,
+      anxious: -3,
+      frustrated: -4,
+      sad: -4
+    };
+
+    const trends = Object.entries(dailyMoods).map(([date, moods]) => {
+      const avgScore = moods.reduce((sum, mood) => sum + (moodScores[mood] || 0), 0) / moods.length;
+      const moodCounts = moods.reduce((acc, mood) => {
+        acc[mood] = (acc[mood] || 0) + 1;
+        return acc;
+      }, {});
+
+      return {
+        date,
+        avgScore: Math.round(avgScore * 10) / 10,
+        moods: moodCounts,
+        entryCount: moods.length
+      };
+    });
+
+    // Calculate insights
+    const allMoods = entries.map(e => e.mood);
+    const moodCounts = allMoods.reduce((acc, mood) => {
+      acc[mood] = (acc[mood] || 0) + 1;
+      return acc;
+    }, {});
+
+    const dominantMood = Object.entries(moodCounts).sort((a, b) => b[1] - a[1])[0][0];
+
+    const scores = entries.map(e => moodScores[e.mood] || 0);
+    const avgScore = scores.reduce((a, b) => a + b, 0) / scores.length;
+    const variance = scores.reduce((sum, score) => sum + Math.pow(score - avgScore, 2), 0) / scores.length;
+    const moodVariability = Math.round(Math.sqrt(variance) * 10) / 10;
+
+    const positiveMoods = ['excited', 'happy', 'grateful', 'hopeful', 'calm'];
+    const positiveCount = allMoods.filter(m => positiveMoods.includes(m)).length;
+    const positiveRatio = Math.round((positiveCount / allMoods.length) * 100);
+
+    res.json({
+      trends,
+      insights: {
+        dominantMood,
+        moodVariability,
+        positiveRatio,
+        totalEntries: entries.length,
+        period: parseInt(period)
+      }
+    });
+  } catch (error) {
+    console.error('Emotion trends error:', error);
     res.status(500).json({ message: error.message });
   }
 };

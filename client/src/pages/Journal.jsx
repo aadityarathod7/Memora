@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import PullToRefresh from 'react-simple-pull-to-refresh';
+import { useSwipeable } from 'react-swipeable';
 import {
   getEntries,
   createEntry,
@@ -53,17 +55,21 @@ import {
   Mic,
   MapPin,
   Flame,
-  WifiOff
+  WifiOff,
+  Activity,
+  Target
 } from 'lucide-react';
 
 // Import feature panels
 import StatsPanel from '../components/StatsPanel';
 import SettingsPanel from '../components/SettingsPanel';
-import SearchPanel from '../components/SearchPanel';
+import AdvancedSearchPanel from '../components/AdvancedSearchPanel';
 import OnThisDayPanel from '../components/OnThisDayPanel';
 import PromptsPanel from '../components/PromptsPanel';
 import WeeklySummaryPanel from '../components/WeeklySummaryPanel';
-import CalendarView from '../components/CalendarView';
+import MonthlySummaryPanel from '../components/MonthlySummaryPanel';
+import EmotionTrendsPanel from '../components/EmotionTrendsPanel';
+import GoalsPanel from '../components/GoalsPanel';
 import MoodHeatmap from '../components/MoodHeatmap';
 import TimelineView from '../components/TimelineView';
 import VoiceRecorder from '../components/VoiceRecorder';
@@ -105,6 +111,11 @@ const Journal = () => {
   const [showWriting, setShowWriting] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState(null);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+
   // Journal form state
   const [journalContent, setJournalContent] = useState('');
   const [feeling, setFeeling] = useState('');
@@ -140,7 +151,6 @@ const Journal = () => {
   const [isOfflineMode, setIsOfflineMode] = useState(false);
   const [isPinLocked, setIsPinLocked] = useState(false);
   const [checkingPin, setCheckingPin] = useState(true);
-
   // Check PIN status on load
   useEffect(() => {
     const checkPinStatus = async () => {
@@ -185,30 +195,87 @@ const Journal = () => {
     loadUserSettings(); // Load theme settings from server
   }, []);
 
-  const fetchEntries = async () => {
+  const fetchEntries = async (page = 1, append = false) => {
     try {
       if (isOffline()) {
         // Load from cache when offline
         const cached = await getCachedEntries();
         setEntries(cached);
+        setHasMore(false);
       } else {
-        const response = await getEntries();
-        setEntries(response.data);
+        const response = await getEntries(page, 20);
+
+        // Handle new pagination response structure
+        const newEntries = response.data.entries || response.data;
+        const pagination = response.data.pagination;
+
+        // Ensure newEntries is always an array
+        const entriesArray = Array.isArray(newEntries) ? newEntries : [];
+
+        if (append) {
+          setEntries(prev => [...prev, ...entriesArray]);
+        } else {
+          setEntries(entriesArray);
+        }
+
+        // Update pagination state
+        if (pagination) {
+          setHasMore(pagination.hasMore);
+          setCurrentPage(pagination.currentPage);
+        }
+
         // Cache entries for offline use
-        await cacheEntries(response.data);
+        await cacheEntries(newEntries);
       }
     } catch (err) {
       console.error('Failed to load entries');
       // Try loading from cache on error
       try {
         const cached = await getCachedEntries();
-        setEntries(cached);
+        setEntries(Array.isArray(cached) ? cached : []);
       } catch (cacheErr) {
         console.error('Failed to load cached entries');
+        setEntries([]); // Ensure entries is always an array
       }
     } finally {
       setFetchingEntries(false);
+      setLoadingMore(false);
     }
+  };
+
+  const loadMoreEntries = async () => {
+    if (loadingMore || !hasMore) return;
+
+    setLoadingMore(true);
+    await fetchEntries(currentPage + 1, true);
+  };
+
+  // Swipe gesture handlers for mobile
+  const handleSwipe = (direction) => {
+    if (!selectedEntry || isPageTurning) return;
+
+    const currentIndex = filteredEntries.findIndex(e => e._id === selectedEntry._id);
+
+    if (direction === 'Left' && currentIndex < filteredEntries.length - 1) {
+      // Swipe left to next entry
+      handleSelectEntry(filteredEntries[currentIndex + 1]);
+    } else if (direction === 'Right' && currentIndex > 0) {
+      // Swipe right to previous entry
+      handleSelectEntry(filteredEntries[currentIndex - 1]);
+    }
+  };
+
+  const swipeHandlers = useSwipeable({
+    onSwipedLeft: () => handleSwipe('Left'),
+    onSwipedRight: () => handleSwipe('Right'),
+    preventDefaultTouchmoveEvent: true,
+    trackMouse: false
+  });
+
+  // Pull to refresh handler
+  const handleRefresh = async () => {
+    setCurrentPage(1);
+    await fetchEntries(1, false);
   };
 
   const fetchCustomTags = async () => {
@@ -408,6 +475,13 @@ const Journal = () => {
     return <IconComponent size={18} style={{ color: config.color }} />;
   };
 
+  // Strip HTML tags for preview text
+  const stripHtml = (html) => {
+    const temp = document.createElement('div');
+    temp.innerHTML = html;
+    return temp.textContent || temp.innerText || '';
+  };
+
   const handleLogout = () => {
     logout();
     navigate('/');
@@ -438,6 +512,11 @@ const Journal = () => {
 
   // Filter entries based on selected filters
   const getFilteredEntries = () => {
+    // Ensure entries is always an array
+    if (!Array.isArray(entries)) {
+      return [];
+    }
+
     return entries.filter(entry => {
       const entryDate = new Date(entry.createdAt);
 
@@ -607,14 +686,6 @@ const Journal = () => {
                 <Search size={18} />
               </button>
               <button
-                onClick={() => openPanel('calendar')}
-                className="p-2 rounded-lg transition-all hover:shadow-md"
-                style={{ color: 'var(--text-secondary)', background: 'var(--bg-paper)' }}
-                title="Calendar"
-              >
-                <Calendar size={18} />
-              </button>
-              <button
                 onClick={() => openPanel('heatmap')}
                 className="p-2 rounded-lg transition-all hover:shadow-md"
                 style={{ color: 'var(--text-secondary)', background: 'var(--bg-paper)' }}
@@ -637,6 +708,30 @@ const Journal = () => {
                 title="Stats"
               >
                 <TrendingUp size={18} />
+              </button>
+              <button
+                onClick={() => openPanel('monthly-summary')}
+                className="p-2 rounded-lg transition-all hover:shadow-md"
+                style={{ color: 'var(--text-secondary)', background: 'var(--bg-paper)' }}
+                title="Monthly Summary"
+              >
+                <Calendar size={18} />
+              </button>
+              <button
+                onClick={() => openPanel('emotion-trends')}
+                className="p-2 rounded-lg transition-all hover:shadow-md"
+                style={{ color: 'var(--text-secondary)', background: 'var(--bg-paper)' }}
+                title="Emotion Trends"
+              >
+                <Activity size={18} />
+              </button>
+              <button
+                onClick={() => openPanel('goals')}
+                className="p-2 rounded-lg transition-all hover:shadow-md"
+                style={{ color: 'var(--text-secondary)', background: 'var(--bg-paper)' }}
+                title="Goals & Challenges"
+              >
+                <Target size={18} />
               </button>
               <button
                 onClick={() => openPanel('prompts')}
@@ -849,28 +944,41 @@ const Journal = () => {
                 <Star size={12} style={{ color: 'var(--gold-accent)' }} />
               </div>
 
-              {entries.length === 0 ? (
-                <div className="text-center py-12">
-                  <BookOpen size={48} className="mx-auto mb-4 opacity-30" style={{ color: 'var(--app-accent)' }} />
-                  <p className="font-serif text-lg mb-1 italic" style={{ color: 'var(--text-primary)' }}>No entries yet</p>
-                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Begin your story...</p>
-                </div>
-              ) : filteredEntries.length === 0 ? (
-                <div className="text-center py-12">
-                  <Calendar size={48} className="mx-auto mb-4 opacity-30" style={{ color: 'var(--app-accent)' }} />
-                  <p className="font-serif text-lg mb-1 italic" style={{ color: 'var(--text-primary)' }}>No entries found</p>
-                  <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>Try adjusting your filters</p>
-                  <button
-                    onClick={clearFilters}
-                    className="text-sm font-serif px-4 py-2 rounded-lg transition-colors"
-                    style={{ color: 'var(--app-accent-dark)', background: 'var(--app-accent-light)' }}
-                  >
-                    Clear filters
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-2">
-                  {filteredEntries.map((entry, index) => (
+              <PullToRefresh
+                onRefresh={handleRefresh}
+                pullingContent={
+                  <div className="text-center py-2">
+                    <p className="text-xs font-serif" style={{ color: 'var(--text-muted)' }}>Pull to refresh...</p>
+                  </div>
+                }
+                refreshingContent={
+                  <div className="text-center py-2">
+                    <Loader2 size={16} className="animate-spin mx-auto" style={{ color: 'var(--app-accent)' }} />
+                  </div>
+                }
+              >
+                {entries.length === 0 ? (
+                  <div className="text-center py-12">
+                    <BookOpen size={48} className="mx-auto mb-4 opacity-30" style={{ color: 'var(--app-accent)' }} />
+                    <p className="font-serif text-lg mb-1 italic" style={{ color: 'var(--text-primary)' }}>No entries yet</p>
+                    <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Begin your story...</p>
+                  </div>
+                ) : filteredEntries.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Calendar size={48} className="mx-auto mb-4 opacity-30" style={{ color: 'var(--app-accent)' }} />
+                    <p className="font-serif text-lg mb-1 italic" style={{ color: 'var(--text-primary)' }}>No entries found</p>
+                    <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>Try adjusting your filters</p>
+                    <button
+                      onClick={clearFilters}
+                      className="text-sm font-serif px-4 py-2 rounded-lg transition-colors"
+                      style={{ color: 'var(--app-accent-dark)', background: 'var(--app-accent-light)' }}
+                    >
+                      Clear filters
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-2">
+                    {filteredEntries.map((entry, index) => (
                     <button
                       key={entry._id}
                       onClick={() => handleSelectEntry(entry)}
@@ -897,7 +1005,7 @@ const Journal = () => {
                         {getMoodIcon(entry.mood)}
                         <p className="font-serif font-medium flex-1 truncate" style={{ color: 'var(--text-primary)' }}>{entry.title}</p>
                       </div>
-                      <p className="text-sm line-clamp-2 mb-2 handwritten" style={{ color: 'var(--text-secondary)' }}>{entry.content}</p>
+                      <p className="text-sm line-clamp-2 mb-2 handwritten" style={{ color: 'var(--text-secondary)' }}>{stripHtml(entry.content)}</p>
                       <div className="flex items-center gap-3">
                         <div className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
                           <Clock size={12} />
@@ -918,8 +1026,30 @@ const Journal = () => {
                       </div>
                     </button>
                   ))}
+
+                  {/* Load More Button */}
+                  {hasMore && !loadingMore && (
+                    <button
+                      onClick={loadMoreEntries}
+                      className="w-full mt-3 py-2.5 rounded-lg font-serif text-sm transition-all hover:shadow-sm"
+                      style={{
+                        background: 'var(--bg-parchment)',
+                        border: '1px solid var(--border-light)',
+                        color: 'var(--app-accent-dark)'
+                      }}
+                    >
+                      Load More Entries
+                    </button>
+                  )}
+
+                  {loadingMore && (
+                    <div className="flex items-center justify-center py-4 mt-3">
+                      <Loader2 size={20} className="animate-spin" style={{ color: 'var(--app-accent)' }} />
+                    </div>
+                  )}
                 </div>
               )}
+              </PullToRefresh>
             </div>
 
             {/* Right page - Main content */}
@@ -928,11 +1058,13 @@ const Journal = () => {
                 {/* Feature Panels */}
                 {activePanel === 'stats' && <StatsPanel onClose={closePanel} />}
                 {activePanel === 'settings' && <SettingsPanel onClose={closePanel} />}
-                {activePanel === 'search' && <SearchPanel onClose={closePanel} onSelectEntry={handleSelectEntry} />}
+                {activePanel === 'search' && <AdvancedSearchPanel onClose={closePanel} onSelectEntry={handleSelectEntry} />}
+                {activePanel === 'monthly-summary' && <MonthlySummaryPanel onClose={closePanel} />}
+                {activePanel === 'emotion-trends' && <EmotionTrendsPanel onClose={closePanel} />}
+                {activePanel === 'goals' && <GoalsPanel onClose={closePanel} />}
                 {activePanel === 'onthisday' && <OnThisDayPanel onClose={closePanel} onSelectEntry={handleSelectEntry} />}
                 {activePanel === 'prompts' && <PromptsPanel onClose={closePanel} onSelectPrompt={handleSelectPrompt} />}
                 {activePanel === 'summary' && <WeeklySummaryPanel onClose={closePanel} onSelectEntry={handleSelectEntry} />}
-                {activePanel === 'calendar' && <CalendarView onClose={closePanel} onSelectEntry={handleSelectEntry} />}
                 {activePanel === 'heatmap' && <MoodHeatmap onClose={closePanel} />}
                 {activePanel === 'timeline' && <TimelineView onClose={closePanel} onSelectEntry={handleSelectEntry} />}
 
@@ -1070,7 +1202,7 @@ const Journal = () => {
                   </div>
                 ) : !activePanel && selectedEntry ? (
                   /* Viewing an entry with conversation */
-                  <div className="space-y-6 animate-fade-in-up">
+                  <div {...swipeHandlers} className="space-y-6 animate-fade-in-up">
                     {/* Your journal entry */}
                     <div className="relative">
                       {/* Entry header */}
@@ -1194,7 +1326,10 @@ const Journal = () => {
                       ) : (
                         <>
                           {/* Entry content with drop cap effect */}
-                          <div className="drop-cap text-lg leading-relaxed whitespace-pre-wrap handwritten ink-text" style={{ fontSize: '1.35rem' }}>
+                          <div
+                            className="drop-cap text-lg leading-relaxed handwritten ink-text whitespace-pre-wrap"
+                            style={{ fontSize: '1.35rem', color: 'var(--text-ink)' }}
+                          >
                             {selectedEntry.content}
                           </div>
 
@@ -1335,6 +1470,15 @@ const Journal = () => {
                         )}
                       </div>
                     ))}
+
+                    {/* Mobile swipe hint */}
+                    {filteredEntries.length > 1 && (
+                      <div className="lg:hidden text-center py-4 mt-4">
+                        <p className="text-xs font-serif italic" style={{ color: 'var(--text-muted)' }}>
+                          ← Swipe to navigate between entries →
+                        </p>
+                      </div>
+                    )}
 
                     {/* Reply input - styled like writing in the margin */}
                     {!isEditing && (

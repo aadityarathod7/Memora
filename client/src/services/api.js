@@ -35,7 +35,7 @@ api.interceptors.response.use(
 );
 
 // Entry API calls
-export const getEntries = () => api.get('/entries');
+export const getEntries = (page = 1, limit = 20) => api.get(`/entries?page=${page}&limit=${limit}`);
 export const getEntry = (id) => api.get(`/entries/${id}`);
 export const createEntry = (data) => api.post('/entries', data);
 export const updateEntry = (id, data) => api.put(`/entries/${id}`, data);
@@ -45,12 +45,34 @@ export const replyToEntry = (id, message) => api.post(`/entries/${id}/reply`, { 
 // New feature endpoints
 export const toggleFavorite = (id) => api.put(`/entries/${id}/favorite`);
 export const updateEntryTags = (id, tags) => api.put(`/entries/${id}/tags`, { tags });
-export const searchEntries = (query) => api.get(`/entries/search?q=${encodeURIComponent(query)}`);
+export const searchEntries = (filters = {}) => {
+  const params = new URLSearchParams();
+
+  if (filters.q) params.append('q', filters.q);
+  if (filters.startDate) params.append('startDate', filters.startDate);
+  if (filters.endDate) params.append('endDate', filters.endDate);
+  if (filters.moods && filters.moods.length) params.append('moods', filters.moods.join(','));
+  if (filters.tags && filters.tags.length) params.append('tags', filters.tags.join(','));
+  if (filters.favorites) params.append('favorites', 'true');
+  if (filters.minWords) params.append('minWords', filters.minWords);
+  if (filters.maxWords) params.append('maxWords', filters.maxWords);
+  if (filters.sortBy) params.append('sortBy', filters.sortBy);
+
+  return api.get(`/entries/search?${params.toString()}`);
+};
 export const getFavorites = () => api.get('/entries/favorites');
 export const getOnThisDay = () => api.get('/entries/on-this-day');
 export const getMoodAnalytics = (period = 'month') => api.get(`/entries/analytics/mood?period=${period}`);
+export const getEmotionTrends = (period = '30', startDate, endDate) => {
+  let url = `/entries/analytics/emotion-trends?period=${period}`;
+  if (startDate && endDate) {
+    url += `&startDate=${startDate}&endDate=${endDate}`;
+  }
+  return api.get(url);
+};
 export const getWritingStats = () => api.get('/entries/stats');
 export const getWeeklySummary = () => api.get('/entries/summary/weekly');
+export const getMonthlySummary = (year, month) => api.get(`/entries/summary/monthly?year=${year}&month=${month}`);
 export const getDailyPrompts = () => api.get('/entries/prompts');
 
 // Calendar, Heatmap, Timeline
@@ -77,6 +99,39 @@ export const updateAudio = (id, audioUrl) => api.put(`/entries/${id}/audio`, { a
 // Spotify
 export const saveSpotifyTrack = (id, track) => api.put(`/entries/${id}/spotify`, track);
 
+// Export & Backup
+export const exportEntries = async (format = 'json') => {
+  const response = await api.get(`/entries/export?format=${format}`, { responseType: 'blob' });
+  const blob = new Blob([response.data], {
+    type: format === 'json' ? 'application/json' :
+          format === 'markdown' ? 'text/markdown' :
+          'text/csv'
+  });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `memora-export-${Date.now()}.${format === 'markdown' ? 'md' : format}`;
+  document.body.appendChild(a);
+  a.click();
+  window.URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+  return response;
+};
+
+export const createBackup = async () => {
+  const response = await api.get('/entries/backup', { responseType: 'blob' });
+  const blob = new Blob([response.data], { type: 'application/json' });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `memora-full-backup-${Date.now()}.json`;
+  document.body.appendChild(a);
+  a.click();
+  window.URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+  return response;
+};
+
 // User/Auth endpoints
 export const getProfile = () => api.get('/auth/profile');
 export const updateSettings = (settings) => api.put('/auth/settings', settings);
@@ -94,5 +149,12 @@ export const getPinStatus = () => api.get('/auth/pin/status');
 export const setPin = (pin, biometricEnabled) => api.post('/auth/pin', { pin, biometricEnabled });
 export const verifyPin = (pin) => api.post('/auth/pin/verify', { pin });
 export const disablePin = (pin) => api.delete('/auth/pin', { data: { pin } });
+
+// Goals & Challenges
+export const getGoals = () => api.get('/goals');
+export const createGoal = (goalData) => api.post('/goals', goalData);
+export const updateGoalProgress = (id, data) => api.put(`/goals/${id}/progress`, data);
+export const deleteGoal = (id) => api.delete(`/goals/${id}`);
+export const getGoalStats = () => api.get('/goals/stats');
 
 export default api;

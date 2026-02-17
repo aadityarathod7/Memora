@@ -31,19 +31,29 @@ const LocationPicker = ({ entryId, existingLocation, onLocationUpdate }) => {
       async (position) => {
         const { latitude, longitude } = position.coords;
 
-        // Try to get location name using reverse geocoding
+        // Try to get exact location using reverse geocoding
         let locationName = '';
         try {
           const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=14`
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`
           );
           const data = await response.json();
-          locationName = data.address?.city ||
-                        data.address?.town ||
-                        data.address?.village ||
-                        data.address?.suburb ||
-                        data.display_name?.split(',')[0] ||
-                        'Unknown location';
+
+          const address = data.address || {};
+          const city = address.city || address.town || address.village;
+          const country = address.country;
+
+          // Use city and country name
+          if (city && country) {
+            locationName = `${city}, ${country}`;
+          } else if (city) {
+            locationName = city;
+          } else if (country) {
+            locationName = country;
+          } else {
+            // Fallback to coordinates if no location found
+            locationName = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+          }
         } catch (e) {
           locationName = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
         }

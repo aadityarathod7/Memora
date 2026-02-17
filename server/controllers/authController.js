@@ -1,6 +1,9 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import User from '../models/User.js';
+import { scheduleUserReminder, removeUserReminder } from '../services/reminderScheduler.js';
+import { sendPasswordResetEmail } from '../services/emailService.js';
 
 // Generate JWT
 const generateToken = (id) => {
@@ -220,6 +223,13 @@ export const updateReminders = async (req, res) => {
 
     await user.save();
 
+    // Update the reminder scheduler
+    if (user.reminders.enabled) {
+      scheduleUserReminder(user);
+    } else {
+      removeUserReminder(user._id);
+    }
+
     res.json({ reminders: user.reminders });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -346,5 +356,108 @@ export const getPinStatus = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Request password reset
+// @route   POST /api/auth/forgot-password
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      // Don't reveal if user exists for security
+      return res.json({ message: 'If an account exists, a password reset link has been sent' });
+    }
+
+    // Generate reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+
+    // Save hashed token and expiry to user
+    user.resetPasswordToken = hashedToken;
+    user.resetPasswordExpire = Date.now() + 30 * 60 * 1000; // 30 minutes
+    await user.save();
+
+    // Send email
+    const resetUrl = `${process.env.APP_URL}/reset-password/${resetToken}`;
+    await sendPasswordResetEmail(user.email, resetUrl);
+
+    res.json({ message: 'If an account exists, a password reset link has been sent' });
+  } catch (error) {
+    console.error('Password reset error:', error);
+    res.status(500).json({ message: 'Error sending password reset email' });
+  }
+};
+
+// @desc    Reset password
+// @route   POST /api/auth/reset-password/:token
+export const resetPassword = async (req, res) => {
+  try {
+    const { token } = req.params;
+    const { password } = req.body;
+
+    if (!password || password.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    }
+
+    // Hash the token from URL
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+    // Find user with valid token
+    const user = await User.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordExpire: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid or expired reset token' });
+    }
+
+    // Update password
+    user.password = password;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+    await user.save();
+
+    res.json({ message: 'Password reset successful' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ message: 'Error resetting password' });
+  }
+};
+
+// @desc    Change password (when logged in)
+// @route   POST /api/auth/change-password
+export const changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Verify current password
+    const isMatch = await user.matchPassword(currentPassword);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Current password is incorrect' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: 'New password must be at least 6 characters' });
+    }
+
+    // Update password
+    user.password = newPassword;
+    await user.save();
+
+    res.json({ message: 'Password changed successfully' });
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({ message: 'Error changing password' });
   }
 };

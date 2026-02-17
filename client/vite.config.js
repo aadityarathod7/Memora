@@ -10,6 +10,18 @@ export default defineConfig({
         target: 'http://localhost:5000',
         changeOrigin: true
       }
+    },
+    hmr: {
+      overlay: true
     }
-  }
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: undefined
+      }
+    }
+  },
+  // Disable caching in development
+  cacheDir: 'node_modules/.vite'
 })

@@ -116,5 +116,14 @@ entrySchema.pre('save', function(next) {
   next();
 });
 
+// Indexes for performance
+entrySchema.index({ user: 1, createdAt: -1 }); // For fetching user's entries sorted by date
+entrySchema.index({ user: 1, isFavorite: 1 }); // For favorites queries
+entrySchema.index({ user: 1, isPinned: 1 }); // For pinned entries
+entrySchema.index({ user: 1, mood: 1 }); // For mood-based queries
+entrySchema.index({ user: 1, tags: 1 }); // For tag-based queries
+entrySchema.index({ user: 1, createdAt: -1, mood: 1 }); // Compound index for common queries
+entrySchema.index({ title: 'text', content: 'text', tags: 'text' }); // Text search index
+
 const Entry = mongoose.model('Entry', entrySchema);
 export default Entry;

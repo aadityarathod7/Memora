@@ -4,11 +4,17 @@ import dotenv from 'dotenv';
 import connectDB from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
 import entryRoutes from './routes/entryRoutes.js';
+import goalRoutes from './routes/goalRoutes.js';
+import { initializeReminders } from './services/reminderScheduler.js';
+import { apiLimiter } from './middleware/rateLimiter.js';
 
 dotenv.config();
 
 // Connect to database
 connectDB();
+
+// Initialize reminder scheduler
+initializeReminders();
 
 const app = express();
 
@@ -16,9 +22,13 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Apply rate limiting to all API routes
+app.use('/api/', apiLimiter);
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/entries', entryRoutes);
+app.use('/api/goals', goalRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

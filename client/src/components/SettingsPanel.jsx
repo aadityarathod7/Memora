@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getProfile, updateSettings, getCustomTags, addCustomTag, deleteCustomTag, exportUserData, getEntries } from '../services/api';
+import { getProfile, updateSettings, getCustomTags, addCustomTag, deleteCustomTag, exportEntries, createBackup } from '../services/api';
 import { useTheme } from '../context/ThemeContext';
 import {
   Settings,
@@ -16,7 +16,8 @@ import {
   Loader2,
   Check,
   Lock,
-  Bell
+  Bell,
+  FileCode
 } from 'lucide-react';
 import { PINSettings } from './PINLock';
 import ReminderSettings from './ReminderSettings';
@@ -109,22 +110,17 @@ const SettingsPanel = ({ onClose, onSettingsChange }) => {
     }
   };
 
-  const handleExport = async () => {
+  const handleExport = async (format = 'json') => {
     setExporting(true);
     try {
-      const res = await exportUserData();
-      const dataStr = JSON.stringify(res.data, null, 2);
-      const blob = new Blob([dataStr], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `memora-backup-${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      if (format === 'backup') {
+        await createBackup();
+      } else {
+        await exportEntries(format);
+      }
     } catch (err) {
-      console.error('Failed to export');
+      console.error('Failed to export:', err);
+      alert('Export failed. Please try again.');
     } finally {
       setExporting(false);
     }
@@ -483,11 +479,11 @@ const SettingsPanel = ({ onClose, onSettingsChange }) => {
               <h3 className="font-serif font-medium" style={{ color: 'var(--text-primary)' }}>Export Data</h3>
             </div>
             <p className="text-sm mb-3" style={{ color: 'var(--text-muted)' }}>
-              Download your journal entries as JSON backup or formatted PDF.
+              Download your journal entries in multiple formats
             </p>
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <button
-                onClick={handleExport}
+                onClick={() => handleExport('backup')}
                 disabled={exporting}
                 className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm disabled:opacity-50"
                 style={{ background: 'var(--app-accent)', color: 'white' }}
@@ -497,17 +493,39 @@ const SettingsPanel = ({ onClose, onSettingsChange }) => {
                 ) : (
                   <FileJson size={16} />
                 )}
-                {exporting ? 'Exporting...' : 'JSON Backup'}
+                {exporting ? 'Exporting...' : 'Full Backup'}
               </button>
               <button
-                onClick={handlePdfExport}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm"
-                style={{ background: 'var(--leather-brown)', color: 'white' }}
+                onClick={() => handleExport('json')}
+                disabled={exporting}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm disabled:opacity-50"
+                style={{ background: 'var(--bg-paper)', color: 'var(--text-secondary)', border: '1px solid var(--border-light)' }}
+              >
+                <FileJson size={16} />
+                JSON
+              </button>
+              <button
+                onClick={() => handleExport('markdown')}
+                disabled={exporting}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm disabled:opacity-50"
+                style={{ background: 'var(--bg-paper)', color: 'var(--text-secondary)', border: '1px solid var(--border-light)' }}
+              >
+                <FileCode size={16} />
+                Markdown
+              </button>
+              <button
+                onClick={() => handleExport('csv')}
+                disabled={exporting}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm disabled:opacity-50"
+                style={{ background: 'var(--bg-paper)', color: 'var(--text-secondary)', border: '1px solid var(--border-light)' }}
               >
                 <FileText size={16} />
-                Export as PDF
+                CSV
               </button>
             </div>
+            <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
+              💡 <strong>Full Backup</strong> includes all settings and data for restoration
+            </p>
           </div>
         </div>
       )}
