@@ -59,7 +59,9 @@ import {
   Activity,
   Target,
   Menu,
-  ArrowLeft
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 // Import feature panels
@@ -583,6 +585,33 @@ const Journal = () => {
       setShowWriting(false);
     });
   };
+
+  // Keyboard navigation for entries
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Only handle arrow keys when an entry is selected and not editing
+      if (!selectedEntry || isPageTurning || isEditing || showWriting || activePanel) return;
+
+      // Prevent arrow key navigation if user is typing in an input/textarea
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      const currentIndex = filteredEntries.findIndex(entry => entry._id === selectedEntry._id);
+
+      if (e.key === 'ArrowRight' && currentIndex < filteredEntries.length - 1) {
+        e.preventDefault();
+        handleSelectEntry(filteredEntries[currentIndex + 1]);
+      } else if (e.key === 'ArrowLeft' && currentIndex > 0) {
+        e.preventDefault();
+        handleSelectEntry(filteredEntries[currentIndex - 1]);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        setSelectedEntry(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedEntry, isPageTurning, isEditing, showWriting, activePanel, filteredEntries, handleSelectEntry]);
 
   // Wrapper for showing write form with animation
   const handleShowWriting = (prompt = '') => {
@@ -1119,9 +1148,9 @@ const Journal = () => {
 
       {/* Mobile Full-Screen Conversation View */}
       {selectedEntry && !activePanel && !showWriting && (
-        <div className="lg:hidden fixed inset-0 z-50 overflow-y-auto" style={{ background: 'var(--bg-cream)' }}>
+        <div className="lg:hidden fixed inset-0 z-50 overflow-y-auto" style={{ background: 'var(--bg-cream)' }} {...swipeHandlers}>
           <div className="min-h-screen p-4">
-            <div className="rounded-lg p-4 shadow-lg" style={{ background: 'var(--bg-paper)' }}>
+            <div className={`rounded-lg p-4 shadow-lg relative ${pageAnimation}`} style={{ background: 'var(--bg-paper)', transformStyle: 'preserve-3d' }}>
               {/* Mobile Header with Back Button */}
               <div className="flex items-center justify-between mb-4 pb-3 border-b" style={{ borderColor: 'var(--border-light)' }}>
                 <button
@@ -1132,6 +1161,11 @@ const Journal = () => {
                   <ArrowLeft size={20} />
                   <span className="text-sm">Back</span>
                 </button>
+
+                {/* Entry position indicator */}
+                <div className="text-xs font-serif" style={{ color: 'var(--text-muted)' }}>
+                  {filteredEntries.findIndex(e => e._id === selectedEntry._id) + 1} of {filteredEntries.length}
+                </div>
 
                 {/* Action buttons */}
                 <div className="flex items-center gap-1">
@@ -1352,6 +1386,57 @@ const Journal = () => {
                   </form>
                 </div>
               )}
+
+              {/* Swipe hint - shown briefly when entry opens */}
+              {filteredEntries.length > 1 && (
+                <div className="mt-4 text-center">
+                  <p className="text-xs font-serif" style={{ color: 'var(--text-muted)' }}>
+                    <span className="hidden sm:inline">Use ← → arrow keys or </span>
+                    Swipe to navigate
+                  </p>
+                </div>
+              )}
+
+              {/* Navigation buttons for swipe/arrow keys */}
+              <div className="fixed top-1/2 -translate-y-1/2 left-2 right-2 flex justify-between pointer-events-none">
+                {/* Previous entry button */}
+                {filteredEntries.findIndex(e => e._id === selectedEntry._id) > 0 && (
+                  <button
+                    onClick={() => {
+                      const currentIndex = filteredEntries.findIndex(e => e._id === selectedEntry._id);
+                      handleSelectEntry(filteredEntries[currentIndex - 1]);
+                    }}
+                    disabled={isPageTurning}
+                    className="pointer-events-auto p-3 rounded-full shadow-lg transition-all disabled:opacity-50"
+                    style={{
+                      background: 'var(--bg-paper)',
+                      color: 'var(--app-accent-dark)',
+                      border: '2px solid var(--border-light)'
+                    }}
+                  >
+                    <ChevronLeft size={24} />
+                  </button>
+                )}
+                <div className="flex-1" />
+                {/* Next entry button */}
+                {filteredEntries.findIndex(e => e._id === selectedEntry._id) < filteredEntries.length - 1 && (
+                  <button
+                    onClick={() => {
+                      const currentIndex = filteredEntries.findIndex(e => e._id === selectedEntry._id);
+                      handleSelectEntry(filteredEntries[currentIndex + 1]);
+                    }}
+                    disabled={isPageTurning}
+                    className="pointer-events-auto p-3 rounded-full shadow-lg transition-all disabled:opacity-50"
+                    style={{
+                      background: 'var(--bg-paper)',
+                      color: 'var(--app-accent-dark)',
+                      border: '2px solid var(--border-light)'
+                    }}
+                  >
+                    <ChevronRight size={24} />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -1796,6 +1881,24 @@ const Journal = () => {
                     <div className="relative">
                       {/* Entry header */}
                       <div className="flex items-start justify-between mb-6">
+                        {/* Previous entry button */}
+                        <div className="flex items-center">
+                          {filteredEntries.findIndex(e => e._id === selectedEntry._id) > 0 && (
+                            <button
+                              onClick={() => {
+                                const currentIndex = filteredEntries.findIndex(e => e._id === selectedEntry._id);
+                                handleSelectEntry(filteredEntries[currentIndex - 1]);
+                              }}
+                              disabled={isPageTurning}
+                              className="p-2 rounded-lg transition-all disabled:opacity-50 hover:bg-opacity-10"
+                              style={{ color: 'var(--app-accent-dark)', background: 'transparent' }}
+                              title="Previous entry (←)"
+                            >
+                              <ChevronLeft size={24} />
+                            </button>
+                          )}
+                        </div>
+
                         <div className="text-center flex-1">
                           <div className="chapter-divider">
                             {getMoodIcon(selectedEntry.mood)}
@@ -1805,6 +1908,30 @@ const Journal = () => {
                             <Clock size={14} />
                             {formatDate(selectedEntry.createdAt)}
                           </div>
+                          {/* Entry position indicator */}
+                          {filteredEntries.length > 1 && (
+                            <div className="text-xs mt-1 font-serif" style={{ color: 'var(--text-muted)' }}>
+                              {filteredEntries.findIndex(e => e._id === selectedEntry._id) + 1} of {filteredEntries.length}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Next entry button */}
+                        <div className="flex items-center">
+                          {filteredEntries.findIndex(e => e._id === selectedEntry._id) < filteredEntries.length - 1 && (
+                            <button
+                              onClick={() => {
+                                const currentIndex = filteredEntries.findIndex(e => e._id === selectedEntry._id);
+                                handleSelectEntry(filteredEntries[currentIndex + 1]);
+                              }}
+                              disabled={isPageTurning}
+                              className="p-2 rounded-lg transition-all disabled:opacity-50 hover:bg-opacity-10"
+                              style={{ color: 'var(--app-accent-dark)', background: 'transparent' }}
+                              title="Next entry (→)"
+                            >
+                              <ChevronRight size={24} />
+                            </button>
+                          )}
                         </div>
 
                         {/* Action buttons */}
