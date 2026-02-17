@@ -43,10 +43,22 @@ export const AuthProvider = ({ children }) => {
 
   const signup = async (name, email, password) => {
     const response = await axios.post('/api/auth/signup', { name, email, password });
-    const userData = response.data;
-    setUser(userData);
-    localStorage.setItem('user', JSON.stringify(userData));
-    return userData;
+    const data = response.data;
+
+    console.log('AuthContext - Signup response data:', data); // Debug log
+
+    // Check if response indicates email verification is needed
+    if (data.message && !data.token) {
+      // Email verification required - don't set user yet
+      console.log('Email verification required - NOT setting user'); // Debug log
+      return data;
+    }
+
+    // Old flow (if email verification is disabled) - set user immediately
+    console.log('Setting user immediately (no verification required)'); // Debug log
+    setUser(data);
+    localStorage.setItem('user', JSON.stringify(data));
+    return data;
   };
 
   const logout = () => {

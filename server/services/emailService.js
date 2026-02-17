@@ -415,3 +415,122 @@ export const sendTestEmail = async (userEmail, userName) => {
     throw error;
   }
 };
+
+// Send email verification with OTP
+export const sendVerificationEmail = async (userEmail, userName, verificationOTP) => {
+  try {
+    const transporter = createTransporter();
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: userEmail,
+      subject: '✨ Your Memora Verification Code',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body {
+              font-family: 'Georgia', serif;
+              background-color: #F5F1E8;
+              padding: 20px;
+            }
+            .container {
+              max-width: 600px;
+              margin: 0 auto;
+              background: white;
+              border-radius: 12px;
+              padding: 40px;
+              box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            }
+            .header {
+              text-align: center;
+              color: #3F5B36;
+              margin-bottom: 30px;
+            }
+            .header h1 {
+              font-size: 32px;
+              margin: 0;
+              color: #6F9463;
+            }
+            .content {
+              color: #2C3E2A;
+              line-height: 1.8;
+              font-size: 16px;
+            }
+            .otp-box {
+              background: linear-gradient(135deg, #6F9463 0%, #3F5B36 100%);
+              color: white;
+              padding: 30px;
+              text-align: center;
+              border-radius: 12px;
+              margin: 30px 0;
+            }
+            .otp-code {
+              font-size: 48px;
+              font-weight: bold;
+              letter-spacing: 8px;
+              font-family: 'Courier New', monospace;
+              margin: 10px 0;
+            }
+            .footer {
+              margin-top: 30px;
+              padding-top: 20px;
+              border-top: 1px solid #E8E4DB;
+              color: #5A6B57;
+              font-size: 14px;
+              text-align: center;
+            }
+            .warning {
+              background: #FFF8E1;
+              border-left: 4px solid #FFC107;
+              padding: 12px;
+              margin: 20px 0;
+              border-radius: 4px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>✨ Welcome to Memora</h1>
+              <p style="font-style: italic; color: #5A6B57;">"Where memories talk back..."</p>
+            </div>
+            <div class="content">
+              <p>Hello ${userName},</p>
+              <p><strong>Thank you for joining Memora!</strong></p>
+              <p>To verify your email address and activate your account, please use the verification code below:</p>
+
+              <div class="otp-box">
+                <p style="margin: 0; font-size: 14px; opacity: 0.9;">Your Verification Code</p>
+                <div class="otp-code">${verificationOTP}</div>
+                <p style="margin: 0; font-size: 12px; opacity: 0.8;">Enter this code on the verification page</p>
+              </div>
+
+              <div class="warning">
+                <p style="margin: 0; font-size: 14px;"><strong>⏰ Important:</strong></p>
+                <p style="margin: 5px 0 0 0; font-size: 14px;">This code will expire in <strong>10 minutes</strong>.</p>
+              </div>
+
+              <p style="margin-top: 20px;">If you didn't create a Memora account, you can safely ignore this email.</p>
+            </div>
+            <div class="footer">
+              <p style="font-style: italic;">Every memory deserves to be remembered.</p>
+              <p style="margin-top: 10px; font-size: 12px; color: #8A9A87;">
+                For security reasons, never share this code with anyone.
+              </p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log(`Verification OTP sent to ${userEmail}`);
+    return true;
+  } catch (error) {
+    console.error('Error sending verification email:', error);
+    return false;
+  }
+};

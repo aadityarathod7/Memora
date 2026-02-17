@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import User from '../models/User.js';
 import { scheduleUserReminder, removeUserReminder } from '../services/reminderScheduler.js';
-import { sendPasswordResetEmail } from '../services/emailService.js';
+import { sendPasswordResetEmail, sendVerificationEmail } from '../services/emailService.js';
 
 // Generate JWT
 const generateToken = (id) => {
@@ -24,15 +24,28 @@ export const signup = async (req, res) => {
       return res.status(400).json({ message: 'User already exists' });
     }
 
+    // Generate 6-digit OTP
+    const verificationOTP = Math.floor(100000 + Math.random() * 900000).toString();
+    const verificationOTPExpiry = Date.now() + 10 * 60 * 1000; // 10 minutes
+
     // Create user
-    const user = await User.create({ name, email, password });
+    const user = await User.create({
+      name,
+      email,
+      password,
+      emailVerified: false,
+      verificationOTP,
+      verificationOTPExpiry
+    });
 
     if (user) {
+      // Send verification email with OTP
+      await sendVerificationEmail(user.email, user.name, verificationOTP);
+
       res.status(201).json({
-        _id: user._id,
-        name: user.name,
+        message: 'Registration successful! Please check your email for the verification code.',
         email: user.email,
-        token: generateToken(user._id)
+        requiresVerification: true
       });
     }
   } catch (error) {
@@ -50,10 +63,19 @@ export const login = async (req, res) => {
     const user = await User.findOne({ email });
 
     if (user && (await user.matchPassword(password))) {
+      // Check if email is verified
+      if (!user.emailVerified) {
+        return res.status(403).json({
+          message: 'Please verify your email before logging in. Check your inbox for the verification link.',
+          emailVerified: false
+        });
+      }
+
       res.json({
         _id: user._id,
         name: user.name,
         email: user.email,
+        emailVerified: user.emailVerified,
         token: generateToken(user._id)
       });
     } else {
@@ -459,5 +481,75 @@ export const changePassword = async (req, res) => {
   } catch (error) {
     console.error('Change password error:', error);
     res.status(500).json({ message: 'Error changing password' });
+  }
+};
+
+// @desc    Verify email with OTP
+// @route   POST /api/auth/verify-email
+export const verifyEmail = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    // Find user with valid OTP
+    const user = await User.findOne({
+      email,
+      verificationOTP: otp,
+      verificationOTPExpiry: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        message: 'Invalid or expired verification code. Please request a new code.'
+      });
+    }
+
+    // Mark email as verified
+    user.emailVerified = true;
+    user.verificationOTP = undefined;
+    user.verificationOTPExpiry = undefined;
+    await user.save();
+
+    res.json({
+      message: 'Email verified successfully! You can now log in to your account.',
+      success: true
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Resend verification OTP
+// @route   POST /api/auth/resend-verification
+export const resendVerification = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.emailVerified) {
+      return res.status(400).json({ message: 'Email is already verified' });
+    }
+
+    // Generate new 6-digit OTP
+    const verificationOTP = Math.floor(100000 + Math.random() * 900000).toString();
+    const verificationOTPExpiry = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+    user.verificationOTP = verificationOTP;
+    user.verificationOTPExpiry = verificationOTPExpiry;
+    await user.save();
+
+    // Send verification email with new OTP
+    await sendVerificationEmail(user.email, user.name, verificationOTP);
+
+    res.json({
+      message: 'Verification code sent! Please check your inbox.',
+      success: true
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };

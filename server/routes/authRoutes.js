@@ -16,7 +16,9 @@ import {
   getPinStatus,
   forgotPassword,
   resetPassword,
-  changePassword
+  changePassword,
+  verifyEmail,
+  resendVerification
 } from '../controllers/authController.js';
 import protect from '../middleware/authMiddleware.js';
 import { authLimiter, passwordResetLimiter } from '../middleware/rateLimiter.js';
@@ -46,5 +48,9 @@ router.delete('/pin', protect, disablePin);
 router.post('/forgot-password', passwordResetLimiter, forgotPassword);
 router.post('/reset-password/:token', passwordResetLimiter, resetPassword);
 router.post('/change-password', protect, changePassword);
+
+// Email verification
+router.post('/verify-email', verifyEmail);
+router.post('/resend-verification', resendVerification);
 
 export default router;

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { BookMarked, Mail, KeyRound, User, ArrowRight, ArrowLeft, Sparkles, Feather, Star } from 'lucide-react';
+import { BookMarked, Mail, KeyRound, User, ArrowRight, ArrowLeft, Sparkles, Feather, Star, CheckCircle } from 'lucide-react';
 
 const Signup = () => {
   const [name, setName] = useState('');
@@ -10,6 +10,8 @@ const Signup = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [signupSuccess, setSignupSuccess] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
 
   const { signup, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -38,8 +40,23 @@ const Signup = () => {
     setLoading(true);
 
     try {
-      await signup(name, email, password);
-      // Don't navigate here - let the useEffect handle it when user is set
+      const response = await signup(name, email, password);
+      console.log('Signup response:', response); // Debug log
+
+      // Check if response indicates email verification is needed
+      if (response?.requiresVerification) {
+        // Redirect to OTP verification page
+        navigate('/verify-otp', { state: { email } });
+      } else if (response?.message && response.message.includes('verify')) {
+        // Fallback: show success message if requiresVerification not set
+        setSignupSuccess(true);
+        setUserEmail(email);
+        setLoading(false);
+      } else {
+        // User is logged in immediately (old flow or verification disabled)
+        // Let the useEffect handle navigation when user is set
+        setLoading(false);
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Something went wrong. Please try again.');
       setLoading(false);
@@ -80,7 +97,37 @@ const Signup = () => {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            {signupSuccess ? (
+              <div className="text-center py-4">
+                <CheckCircle size={64} className="mx-auto mb-4" style={{ color: '#22c55e' }} />
+                <h2 className="font-serif text-xl mb-3" style={{ color: 'var(--text-primary)' }}>
+                  Check Your Email!
+                </h2>
+                <p className="mb-4" style={{ color: 'var(--text-secondary)' }}>
+                  We've sent a verification link to <strong>{userEmail}</strong>
+                </p>
+                <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>
+                  Please check your inbox and click the verification link to activate your account. The link will expire in 24 hours.
+                </p>
+                <div className="space-y-3">
+                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                    Didn't receive the email?
+                  </p>
+                  <Link
+                    to="/resend-verification"
+                    className="inline-block px-6 py-3 rounded-lg font-medium"
+                    style={{
+                      color: 'var(--app-accent-dark)',
+                      background: 'var(--bg-parchment)',
+                      border: '1px solid var(--border-light)'
+                    }}
+                  >
+                    Resend Verification Email
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-serif font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
                   Your name
@@ -190,6 +237,7 @@ const Signup = () => {
                 )}
               </button>
             </form>
+            )}
 
             <p className="text-center mt-8 font-serif" style={{ color: 'var(--text-secondary)' }}>
               Already have a journal?{' '}

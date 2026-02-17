@@ -19,6 +19,17 @@ const userSchema = new mongoose.Schema({
     required: [true, 'Please add a password'],
     minlength: 6
   },
+  // Email verification
+  emailVerified: {
+    type: Boolean,
+    default: false
+  },
+  verificationOTP: {
+    type: String
+  },
+  verificationOTPExpiry: {
+    type: Date
+  },
   // User preferences
   settings: {
     theme: {

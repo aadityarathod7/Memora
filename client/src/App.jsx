@@ -7,6 +7,9 @@ import Signup from './pages/Signup';
 import Journal from './pages/Journal';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import VerifyEmail from './pages/VerifyEmail';
+import ResendVerification from './pages/ResendVerification';
+import VerifyOTP from './pages/VerifyOTP';
 
 // Protected route wrapper
 function ProtectedRoute({ children }) {
@@ -35,6 +38,9 @@ function AppRoutes() {
         <Route path="/signup" element={<Signup />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
+        <Route path="/verify-email/:token" element={<VerifyEmail />} />
+        <Route path="/verify-otp" element={<VerifyOTP />} />
+        <Route path="/resend-verification" element={<ResendVerification />} />
         <Route path="/journal" element={<ProtectedRoute><Journal /></ProtectedRoute>} />
       </Routes>
     </div>
